@@ -1,0 +1,490 @@
+/* =========================
+   PAGE
+========================= */
+
+.login-page {
+  min-height: 100vh;
+  width: 100%;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 40px 20px;
+
+  background:
+    radial-gradient(
+      circle at 15% 20%,
+      rgba(255, 255, 255, 0.9) 0,
+      rgba(255, 255, 255, 0) 25%
+    ),
+    radial-gradient(
+      circle at 85% 15%,
+      rgba(255, 255, 255, 0.95) 0,
+      rgba(255, 255, 255, 0) 25%
+    ),
+    linear-gradient(
+      135deg,
+      #b7dff2,
+      #d9eef8
+    );
+
+  box-sizing: border-box;
+}
+
+
+/* =========================
+   MAIN CARD
+========================= */
+
+.login-card {
+  width: 100%;
+  max-width: 980px;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  background: #ffffff;
+
+  border-radius: 20px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 15px 45px rgba(0, 0, 0, 0.12);
+
+  min-height: 520px;
+}
+
+
+/* =========================
+   LEFT IMAGE SECTION
+========================= */
+
+.image-section {
+  position: relative;
+
+  min-height: 520px;
+
+  background-image: url("../assets/First.jpeg");
+
+  /*
+    TEMPORARY:
+    We are using your reference image
+    as a placeholder until you add
+    the separate Yeti image.
+  */
+
+  background-size: 200% 100%;
+  background-position: left center;
+  background-repeat: no-repeat;
+
+  overflow: hidden;
+}
+
+
+/*
+  Dark/transparent area behind
+  the bottom text
+*/
+
+.image-section::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  background:
+    linear-gradient(
+      to top,
+      rgba(0, 0, 0, 0.18),
+      transparent 45%
+    );
+
+  pointer-events: none;
+}
+
+
+/* =========================
+   LEFT TEXT
+========================= */
+
+.image-content {
+  position: absolute;
+
+  left: 28px;
+  bottom: 28px;
+
+  z-index: 2;
+}
+
+.image-content h1 {
+  margin: 0;
+
+  color: #ffffff;
+
+  font-size: 38px;
+
+  line-height: 0.92;
+
+  font-weight: 900;
+
+  letter-spacing: -1.5px;
+
+  text-align: left;
+
+  text-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.4);
+}
+
+
+/* =========================
+   RIGHT FORM SECTION
+========================= */
+
+.form-section {
+  padding: 45px 65px;
+
+  display: flex;
+  flex-direction: column;
+
+  justify-content: center;
+
+  background: #ffffff;
+
+  text-align: left;
+}
+
+
+/* =========================
+   BRAND
+========================= */
+
+.brand {
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+
+  margin-bottom: 25px;
+}
+
+.brand-symbol {
+  font-size: 19px;
+
+  line-height: 1;
+
+  margin-bottom: 3px;
+}
+
+.brand span {
+  font-size: 8px;
+
+  font-weight: 700;
+
+  letter-spacing: 0.3px;
+
+  color: #222;
+}
+
+
+/* =========================
+   HEADING
+========================= */
+
+.form-section h2 {
+  margin: 0;
+
+  text-align: center;
+
+  font-size: 27px;
+
+  line-height: 1.1;
+
+  font-weight: 800;
+
+  letter-spacing: -0.8px;
+
+  color: #080808;
+}
+
+.description {
+  margin: 8px 0 25px;
+
+  text-align: center;
+
+  color: #999;
+
+  font-size: 10px;
+
+  line-height: 1.5;
+}
+
+
+/* =========================
+   INPUT GROUP
+========================= */
+
+.input-group {
+  margin-bottom: 16px;
+}
+
+.input-group label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #666;
+
+  font-size: 10px;
+
+  font-weight: 500;
+}
+
+.input-group input {
+  width: 100%;
+
+  height: 38px;
+
+  padding: 0 12px;
+
+  border: none;
+
+  border-radius: 7px;
+
+  outline: none;
+
+  background: #f5f8fa;
+
+  color: #333;
+
+  font-size: 11px;
+
+  box-sizing: border-box;
+
+  transition: 0.2s ease;
+}
+
+.input-group input::placeholder {
+  color: #c1c5c8;
+}
+
+.input-group input:focus {
+  background: #f1f7fa;
+
+  box-shadow:
+    0 0 0 2px #dceef6;
+}
+
+
+/* =========================
+   OPTIONS
+========================= */
+
+.form-options {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin: 3px 0 20px;
+
+  font-size: 9px;
+}
+
+.remember {
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  color: #777;
+
+  cursor: pointer;
+}
+
+.remember input {
+  width: 10px;
+  height: 10px;
+
+  margin: 0;
+}
+
+.form-options a {
+  color: #555;
+
+  text-decoration: none;
+}
+
+
+/* =========================
+   SIGN IN BUTTON
+========================= */
+
+.signin-button {
+  width: 100%;
+
+  height: 39px;
+
+  border: none;
+
+  border-radius: 7px;
+
+  background: #000000;
+
+  color: #ffffff;
+
+  font-size: 10px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+.signin-button:hover {
+  background: #222222;
+
+  transform: translateY(-1px);
+}
+
+
+/* =========================
+   GOOGLE BUTTON
+========================= */
+
+.google-button {
+  width: 100%;
+
+  height: 39px;
+
+  margin-top: 10px;
+
+  border: 1px solid #eeeeee;
+
+  border-radius: 7px;
+
+  background: #ffffff;
+
+  color: #555;
+
+  font-size: 10px;
+
+  cursor: pointer;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 7px;
+
+  transition: 0.2s ease;
+}
+
+.google-button:hover {
+  background: #fafafa;
+
+  border-color: #dddddd;
+}
+
+.google-icon {
+  font-size: 14px;
+
+  font-weight: 700;
+
+  color: #4285f4;
+}
+
+
+/* =========================
+   SIGN UP
+========================= */
+
+.signup-text {
+  margin-top: 25px;
+
+  text-align: center;
+
+  color: #999;
+
+  font-size: 9px;
+}
+
+.signup-text a {
+  color: #333;
+
+  font-weight: 600;
+
+  text-decoration: none;
+}
+
+
+/* =========================
+   TABLET
+========================= */
+
+@media (max-width: 768px) {
+
+  .login-page {
+    padding: 25px 15px;
+  }
+
+  .login-card {
+    max-width: 500px;
+
+    grid-template-columns: 1fr;
+  }
+
+  .image-section {
+    min-height: 300px;
+  }
+
+  .form-section {
+    padding: 40px 35px;
+  }
+
+}
+
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 480px) {
+
+  .login-page {
+    padding: 15px 10px;
+  }
+
+  .login-card {
+    border-radius: 15px;
+  }
+
+  .image-section {
+    min-height: 240px;
+  }
+
+  .image-content {
+    left: 20px;
+    bottom: 20px;
+  }
+
+  .image-content h1 {
+    font-size: 29px;
+  }
+
+  .form-section {
+    padding: 35px 22px;
+  }
+
+  .form-section h2 {
+    font-size: 24px;
+  }
+
+}
