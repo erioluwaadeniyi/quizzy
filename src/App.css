@@ -16,3 +16,11 @@
   .mode-switch button{padding:8px 10px;font-size:10px}
   .actions{grid-template-columns:1fr}
 }
+.result-sparkles i{position:absolute;display:block;width:7px;height:7px;background:#d95832;border-radius:50%;opacity:.3;animation:sparkle 2.8s ease-in-out infinite}
+.result-sparkles i:nth-child(1){top:18%;left:9%}.result-sparkles i:nth-child(2){top:24%;right:11%;width:5px;height:5px;animation-delay:.4s}.result-sparkles i:nth-child(3){top:49%;left:5%;width:4px;height:4px;animation-delay:.8s}.result-sparkles i:nth-child(4){top:43%;right:6%;width:6px;height:6px;animation-delay:1.1s}.result-sparkles i:nth-child(5){bottom:18%;left:15%;width:5px;height:5px;animation-delay:1.5s}.result-sparkles i:nth-child(6){bottom:15%;right:17%;width:4px;height:4px;animation-delay:1.9s}
+.result-f .emoji{--result-accent:#3f76b6}.result-l .emoji{--result-accent:#d95874}.result-a .emoji{--result-accent:#9b6ae8}.result-m .emoji{--result-accent:#b8862f}.result-e .emoji{--result-accent:#d34d36}.result-s .emoji{--result-accent:#db7d3b}.result-l .emoji{animation:heartbeat .85s .2s ease both}.result-e .emoji{animation:shake .65s .2s ease both}.result-m .emoji{animation:dropIn .8s .2s cubic-bezier(.2,.9,.3,1) both}
+@keyframes resultPop{from{opacity:0;transform:translateY(22px) scale(.65) rotate(-8deg)}70%{transform:translateY(-3px) scale(1.06) rotate(2deg)}to{opacity:1;transform:none}}
+@keyframes heartbeat{0%{transform:scale(.6)}45%{transform:scale(1.15)}65%{transform:scale(.92)}82%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-8px) rotate(-4deg)}50%{transform:translateX(8px) rotate(4deg)}75%{transform:translateX(-5px) rotate(-2deg)}}
+@keyframes dropIn{0%{opacity:0;transform:translateY(-32px) rotate(10deg) scale(.75)}70%{transform:translateY(6px) rotate(-2deg) scale(1.05)}100%{opacity:1;transform:none}}
+@keyframes sparkle{0%,100%{transform:scale(.65);opacity:.15}50%{transform:scale(1.4);opacity:.75}}
