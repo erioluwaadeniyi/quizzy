@@ -24,3 +24,24 @@
 @keyframes shake{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-8px) rotate(-4deg)}50%{transform:translateX(8px) rotate(4deg)}75%{transform:translateX(-5px) rotate(-2deg)}}
 @keyframes dropIn{0%{opacity:0;transform:translateY(-32px) rotate(10deg) scale(.75)}70%{transform:translateY(6px) rotate(-2deg) scale(1.05)}100%{opacity:1;transform:none}}
 @keyframes sparkle{0%,100%{transform:scale(.65);opacity:.15}50%{transform:scale(1.4);opacity:.75}}
+/* Button layout + responsive safeguards */
+.match{display:flex;align-items:center;gap:12px}
+.match>span{flex:1;min-width:0;width:auto;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+.match>b{flex:0 0 32px;width:32px;height:32px;border-radius:10px;background:#ffb52f;color:#17120f;display:grid;place-items:center}
+.invite-home{width:min(720px,100%);margin:14px auto 0;height:46px;border:1px solid #e0d6ca;border-radius:14px;background:#ffffff80;color:#5f554d;display:flex;align-items:center;justify-content:center;gap:9px;font-size:11px;font-weight:800;cursor:pointer;transition:transform .2s ease,background .2s ease,border-color .2s ease}
+.invite-home b{font-size:14px;color:#d95832}
+.invite-home:hover{transform:translateY(-1px);background:#fff;border-color:#d3c6b7}
+@media(max-width:700px){
+  .shell{width:calc(100% - 30px)}
+  .match{height:54px;padding:0 14px 0 16px;gap:9px}
+  .match>span{font-size:13px}
+  .match>b{flex-basis:30px;width:30px;height:30px}
+  .invite-home{height:44px;font-size:10px}
+}
+@media(max-width:380px){
+  .hero h1{font-size:clamp(38px,11vw,50px)}
+  .mode-switch{width:100%;justify-content:center}
+  .mode-switch button{flex:1;white-space:nowrap;padding-inline:8px}
+  .card{padding:16px}
+  .match>span{font-size:12px}
+}
