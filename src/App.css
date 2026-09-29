@@ -45,3 +45,18 @@
   .card{padding:16px}
   .match>span{font-size:12px}
 }
+
+/* Final button alignment */
+.match{position:relative;justify-content:center;text-align:center;padding-left:54px;padding-right:54px}
+.match>span{flex:0 1 auto;min-width:0;width:auto;display:block;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.match>b{position:absolute;right:14px;top:50%;transform:translateY(-50%);flex:0 0 32px}
+.invite-home{justify-content:center;text-align:center}
+@media(max-width:700px){
+  .match{padding-left:44px;padding-right:44px}
+  .match>b{right:12px}
+}
+@media(max-width:380px){
+  .match{padding-left:40px;padding-right:40px}
+  .match>span{font-size:12px}
+  .match>b{right:10px;width:30px;height:30px}
+}
