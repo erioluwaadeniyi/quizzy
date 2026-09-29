@@ -1,0 +1,1 @@
+This dashboard uses Vercel Web Analytics API. It does not generate or store fake statistics. Configure VERCEL_TOKEN, VERCEL_PROJECT_ID, and ADMIN_PASSWORD in Vercel Environment Variables before using /admin/. Names entered into FLAMES are not sent as analytics event properties.
