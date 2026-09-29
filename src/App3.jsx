@@ -60,24 +60,26 @@ function downloadResultCard(nameA,nameB,resultKey,percent,message,secret){
   image.src=url;
 }
 
+function trackEvent(name, properties={}){ try { window.va?.("event", { name, ...properties }); } catch {} }
+
 export default function App(){
   const [a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0);
   const result=key?RESULTS[key]:null;
   const pct=useMemo(()=>key?score(a,b):0,[a,b,key]);
   const displayPair=secretMode?a.trim()+" × Secret Crush":a.trim()+" × "+b.trim();
 
-  const start=e=>{e.preventDefault();if(!a.trim()||!b.trim()||loading)return;setLoading(true);setKey(null);setCopied(false);setDownloaded(false);window.setTimeout(()=>{const k=flames(a,b);const list=RESULTS[k].messages;setQuipIndex((a.length+b.length+Date.now())%list.length);setKey(k);setLoading(false)},1700)};
+  const start=e=>{e.preventDefault();if(!a.trim()||!b.trim()||loading)return;trackEvent("match_started",{mode:secretMode?"secret_crush":"classic"});setLoading(true);setKey(null);setCopied(false);setDownloaded(false);window.setTimeout(()=>{const k=flames(a,b);const list=RESULTS[k].messages;setQuipIndex((a.length+b.length+Date.now())%list.length);setKey(k);setLoading(false);trackEvent("match_completed",{mode:secretMode?"secret_crush":"classic",result:k})},1700)};
   const reset=()=>{setKey(null);setLoading(false);setCopied(false);setDownloaded(false)};
-  const inviteFriends=async()=>{
+  const inviteFriends=async()=>{trackEvent("invite_clicked");
     const text="🔥 Come play FLAMES with me! Put two names in and see what the game says.";
     if(navigator.share){
       try{await navigator.share({title:"Play FLAMES",text,url:location.href});return}catch{}
     }
     window.open("https://wa.me/?text="+encodeURIComponent(text+" "+location.href),"_blank","noopener,noreferrer");
   };
-  const share=async()=>{if(!result)return;const text=secretMode?"I played FLAMES for a secret crush and got "+result.name+" 🔥 Try yours!":"I played FLAMES with "+a.trim()+" + "+b.trim()+" and got "+result.name+" 🔥 Try yours!";if(navigator.share){try{await navigator.share({title:"My FLAMES result",text,url:location.href});return}catch{}}window.open("https://wa.me/?text="+encodeURIComponent(text+" "+location.href),"_blank","noopener,noreferrer")};
-  const copy=async()=>{if(!result)return;const text=secretMode?"FLAMES result: "+a.trim()+" + Secret Crush = "+result.name+" 🔥":"FLAMES result: "+a.trim()+" + "+b.trim()+" = "+result.name+" 🔥";try{await navigator.clipboard.writeText(text);setCopied(true);window.setTimeout(()=>setCopied(false),1800)}catch{}};
-  const download=()=>{if(!result)return;downloadResultCard(a.trim(),b.trim(),key,pct,result.messages[quipIndex],secretMode);setDownloaded(true);window.setTimeout(()=>setDownloaded(false),2200)};
+  const share=async()=>{if(!result)return;trackEvent("share_clicked",{mode:secretMode?"secret_crush":"classic",result:key});const text=secretMode?"I played FLAMES for a secret crush and got "+result.name+" 🔥 Try yours!":"I played FLAMES with "+a.trim()+" + "+b.trim()+" and got "+result.name+" 🔥 Try yours!";if(navigator.share){try{await navigator.share({title:"My FLAMES result",text,url:location.href});return}catch{}}window.open("https://wa.me/?text="+encodeURIComponent(text+" "+location.href),"_blank","noopener,noreferrer")};
+  const copy=async()=>{if(!result)return;trackEvent("copy_clicked",{result:key});const text=secretMode?"FLAMES result: "+a.trim()+" + Secret Crush = "+result.name+" 🔥":"FLAMES result: "+a.trim()+" + "+b.trim()+" = "+result.name+" 🔥";try{await navigator.clipboard.writeText(text);setCopied(true);window.setTimeout(()=>setCopied(false),1800)}catch{}};
+  const download=()=>{if(!result)return;trackEvent("download_clicked",{result:key});downloadResultCard(a.trim(),b.trim(),key,pct,result.messages[quipIndex],secretMode);setDownloaded(true);window.setTimeout(()=>setDownloaded(false),2200)};
 
   return <main className={"app "+(secretMode?"secret-mode":"")}><div className="glow g1"/><div className="glow g2"/>
     <header><button className="brand" onClick={reset} aria-label="Back to FLAMES home"><span><Flame/></span>FLAMES</button><div className="fun"><i/> Just for fun</div></header>
