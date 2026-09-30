@@ -1,0 +1,3 @@
+const SUPABASE_URL="https://lbkhadjmkwtrbzwkuhyn.supabase.co";
+const SUPABASE_KEY="sb_publishable_NQ17m1yFOZf-6Yg69U3kWQ_yOzFgKkK";
+export async function submitFeedback({rating=null,category=null,message=null,path=""}={}){try{const r=await fetch(SUPABASE_URL+"/rest/v1/flames_feedback",{method:"POST",headers:{"apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify({rating:["love_it","good","okay","needs_work"].includes(rating)?rating:null,category:["bug","idea","ui","game","other"].includes(category)?category:null,message:typeof message==="string"?message.slice(0,1000):null,path:typeof path==="string"?path.slice(0,200):""}),keepalive:true});return r.ok}catch{return false}}
