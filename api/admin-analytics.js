@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 
 const cookieName = "flames_admin";
-const projectId = process.env.VERCEL_PROJECT_ID || "quizzy";
+const projectId = process.env.VERCEL_PROJECT_ID;\nconst teamId = process.env.VERCEL_TEAM_ID;
 
 function sign(value) {
   return crypto.createHmac("sha256", process.env.ADMIN_PASSWORD || "").update(value).digest("base64url");
