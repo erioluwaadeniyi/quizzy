@@ -32,7 +32,7 @@ async function load(){
     '<section class="panel"><h2>Engagement</h2><table>'+
       row("Shares",d.shares)+row("Downloads",d.downloads)+row("Invites",d.invites)+row("Copies",d.copies)+row("Total tracked events",d.totalEvents)+
     '</table></section>'+
-    '<section class="panel"><h2>FLAMES results</h2><div>'+
+    '<section class="panel"><h2>Feedback</h2><div class="feedback-admin">'+((d.feedback||[]).length?d.feedback.map(f=>'<article class="feedback-item"><div class="feedback-meta"><b>'+esc((f.rating||"No rating").replace(/_/g," "))+'</b><span>'+esc(f.category||"No category")+' · '+esc(new Date(f.created_at).toLocaleString())+'</span></div><p>'+esc(f.message||"No written feedback.")+'</p></article>').join(""):'<p class="muted">No feedback yet.</p>')+'</div></section><section class="panel"><h2>FLAMES results</h2><div>'+
       Object.entries(d.results||{}).sort((a,b)=>b[1]-a[1]).map(([name,count])=>'<div class="event"><span>'+esc(name)+'</span><strong>'+count+'</strong></div>').join("")+
     '</div></section>'+
     '<section class="panel"><h2>Usage by day</h2><div>'+daily+'</div></section>'+
