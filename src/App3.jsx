@@ -78,7 +78,38 @@ export default function App(){
     }
     window.open("https://wa.me/?text="+encodeURIComponent(text+" "+location.href),"_blank","noopener,noreferrer");
   };
-  const share=async()=>{if(!result)return;trackEvent("share_clicked",{mode:secretMode?"secret_crush":"classic",result:key});const text=secretMode?"I played FLAMES for a secret crush and got "+result.name+" 🔥 Try yours!":"I played FLAMES with "+a.trim()+" + "+b.trim()+" and got "+result.name+" 🔥 Try yours!";if(navigator.share){try{await navigator.share({title:"My FLAMES result",text,url:location.href});return}catch{}}window.open("https://wa.me/?text="+encodeURIComponent(text+" "+location.href),"_blank","noopener,noreferrer")};
+  const shareText=()=>secretMode?"I played FLAMES in Secret Crush mode and got "+result.name+" 🔥 Try yours!":"I played FLAMES with "+a.trim()+" + "+b.trim()+" and got "+result.name+" 🔥 Try yours!";
+  const resultUrl=()=>location.href;
+  const openShareUrl=(url)=>window.open(url,"_blank","noopener,noreferrer");
+  const createCardPng=()=>new Promise(resolve=>{
+    if(!result){resolve(null);return}
+    const pairA=escapeXml(a.trim()),pairB=escapeXml(secretMode?"SECRET CRUSH":b.trim());
+    const svg=[
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">',
+      '<defs><linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4d8"/><stop offset="55%" stop-color="#fffaf2"/><stop offset="100%" stop-color="#ffd6ba"/></linearGradient></defs>',
+      '<rect width="1080" height="1350" rx="72" fill="url(#bg2)"/><circle cx="910" cy="150" r="150" fill="#ff9d3d" opacity=".13"/><circle cx="140" cy="1170" r="190" fill="#d95832" opacity=".10"/>',
+      '<rect x="70" y="70" width="940" height="1210" rx="52" fill="#ffffff" fill-opacity=".84" stroke="#eadfd2" stroke-width="3"/>',
+      '<rect x="438" y="112" width="204" height="56" rx="17" fill="#17120f"/><path fill="#ff9d3d" d="M520 121c2.3 8.1-4.3 10.5-3 16.2.7 2.9 3.2 3.9 5.1 1.8 2.3-2.5 1.4-6.5 1.4-6.5 5.3 4.1 7.7 8.9 7.1 13.4-1 6.8-6.5 10-12.3 10-7.3 0-12.4-4.5-12.4-11 0-5.4 3.1-10.2 8.1-13.6-.4 4 .9 6.4 2.8 7-1-5.6 2.6-10.1 3.2-16.4Z"/><path fill="#ffe28a" d="M520.3 139c2.7 2.9 3.9 5.2 3.6 7.6-.3 2.6-1.9 4.1-4.1 4.1-2.5 0-4.2-1.8-4.2-4.1 0-1.9.9-3.6 2.7-5.2-.1 1.8.7 2.7 1.6 3.1-.3-1.9.1-3.7.4-5.5Z"/><text x="558" y="150" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="5">FLAMES</text>',
+      '<text x="540" y="220" text-anchor="middle" fill="#a08f82" font-family="Arial,sans-serif" font-size="16" font-weight="700" letter-spacing="4">RESULT REVEALED</text>',
+      '<text x="540" y="310" text-anchor="middle" fill="#756b62" font-family="Arial,sans-serif" font-size="25" font-weight="700">'+pairA+' × '+pairB+'</text>',
+      '<circle cx="540" cy="465" r="105" fill="#fff1d0" stroke="#f2dfb7" stroke-width="3"/>',
+      '<text x="540" y="500" text-anchor="middle" font-family="Arial,sans-serif" font-size="82">'+escapeXml(result.emoji)+'</text>',
+      '<text x="540" y="625" text-anchor="middle" fill="#a19589" font-family="Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="5">THE FLAMES SAYS</text>',
+      '<text x="540" y="720" text-anchor="middle" fill="#d95832" font-family="Arial,sans-serif" font-size="92" font-weight="800">'+escapeXml(result.name)+'</text>',
+      '<text x="540" y="805" text-anchor="middle" fill="#70675f" font-family="Arial,sans-serif" font-size="23">'+escapeXml(result.messages[quipIndex])+'</text>',
+      '<text x="540" y="980" text-anchor="middle" fill="#8d8176" font-family="Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="3">PLAYFUL COMPATIBILITY</text>',
+      '<text x="540" y="1045" text-anchor="middle" fill="#17120f" font-family="Arial,sans-serif" font-size="54" font-weight="800">'+pct+'%</text>',
+      '<rect x="180" y="1085" width="720" height="16" rx="8" fill="#eee6dc"/><rect x="180" y="1085" width="'+(pct*7.2)+'" height="16" rx="8" fill="#d95832"/>',
+      '<text x="540" y="1165" text-anchor="middle" fill="#a79d94" font-family="Arial,sans-serif" font-size="16">Just for fun · Not a real measure of compatibility</text>',
+      '</svg>'
+    ].join("");
+    const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"})),image=new Image();
+    image.onload=()=>{const canvas=document.createElement("canvas");canvas.width=1080;canvas.height=1350;const ctx=canvas.getContext("2d");ctx.drawImage(image,0,0);URL.revokeObjectURL(url);canvas.toBlob(resolve,"image/png")};
+    image.onerror=()=>{URL.revokeObjectURL(url);resolve(null)};
+    image.src=url;
+  });
+  const shareCard=async()=>{if(!result)return;trackEvent("share_clicked",{mode:secretMode?"secret_crush":"classic",result:key});try{const png=await createCardPng();if(!png)throw new Error("card");const file=new File([png],"flames-result.png",{type:"image/png"});if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({title:"My FLAMES result",text:shareText(),files:[file]});setShareOpen(false);return}const u=URL.createObjectURL(png);const aTag=document.createElement("a");aTag.href=u;aTag.download="flames-result.png";document.body.appendChild(aTag);aTag.click();aTag.remove();URL.revokeObjectURL(u);setShareNotice("Your result card was downloaded. You can now post it to Instagram, WhatsApp, Facebook or anywhere else.");}catch{}};
+  const shareTo=(platform)=>{if(!result)return;trackEvent("share_clicked",{mode:secretMode?"secret_crush":"classic",result:key});const text=shareText(),url=resultUrl(),title="My FLAMES result";if(platform==="whatsapp")openShareUrl("https://wa.me/?text="+encodeURIComponent(text+" "+url));else if(platform==="x")openShareUrl("https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url));else if(platform==="facebook")openShareUrl("https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(url));else if(platform==="threads")openShareUrl("https://www.threads.net/intent/post?text="+encodeURIComponent(text+" "+url));else if(platform==="reddit")openShareUrl("https://www.reddit.com/submit?url="+encodeURIComponent(url)+"&title="+encodeURIComponent(title));else if(platform==="discord"){try{navigator.clipboard.writeText(text+" "+url)}catch{}openShareUrl("https://discord.com/app");setShareNotice("Result text copied. Paste it into the Discord chat you want.");}else if(platform==="instagram"){shareCard()}};
   const copy=async()=>{if(!result)return;trackEvent("copy_clicked",{result:key});const text=secretMode?"FLAMES result: "+a.trim()+" + Secret Crush = "+result.name+" 🔥":"FLAMES result: "+a.trim()+" + "+b.trim()+" = "+result.name+" 🔥";try{await navigator.clipboard.writeText(text);setCopied(true);window.setTimeout(()=>setCopied(false),1800)}catch{}};
   const download=()=>{if(!result)return;trackEvent("download_clicked",{result:key});downloadResultCard(a.trim(),b.trim(),key,pct,result.messages[quipIndex],secretMode);setDownloaded(true);window.setTimeout(()=>setDownloaded(false),2200)};
 
