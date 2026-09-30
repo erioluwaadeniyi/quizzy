@@ -82,6 +82,8 @@ export default function App(){
   const copy=async()=>{if(!result)return;trackEvent("copy_clicked",{result:key});const text=secretMode?"FLAMES result: "+a.trim()+" + Secret Crush = "+result.name+" 🔥":"FLAMES result: "+a.trim()+" + "+b.trim()+" = "+result.name+" 🔥";try{await navigator.clipboard.writeText(text);setCopied(true);window.setTimeout(()=>setCopied(false),1800)}catch{}};
   const download=()=>{if(!result)return;trackEvent("download_clicked",{result:key});downloadResultCard(a.trim(),b.trim(),key,pct,result.messages[quipIndex],secretMode);setDownloaded(true);window.setTimeout(()=>setDownloaded(false),2200)};
 
+  const sendFeedback=async()=>{if(feedbackSending||(!feedbackRating&&!feedbackMessage.trim()))return;setFeedbackSending(true);const ok=await submitFeedback({rating:feedbackRating||null,category:feedbackCategory||null,message:feedbackMessage.trim()||null,path:location.pathname});setFeedbackSending(false);if(ok){setFeedbackSent(true);setFeedbackMessage("");setFeedbackRating("");setFeedbackCategory("");window.setTimeout(()=>{setFeedbackSent(false);setFeedbackOpen(false)},1400)}};
+  const dismissMiniPromo=()=>{setMiniPromo(false);try{localStorage.setItem("flames_mini_promo_dismissed","1")}catch{}};
   return <main className={"app "+(secretMode?"secret-mode":"")}><div className="glow g1"/><div className="glow g2"/>
     <header><button className="brand" onClick={reset} aria-label="Back to FLAMES home"><span><Flame/></span>FLAMES</button><div className="fun"><i/> Just for fun</div></header>
     <section className="shell">
