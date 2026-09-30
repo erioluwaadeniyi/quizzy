@@ -51,10 +51,13 @@ export default async function handler(req,res) {
     const days=Math.min(Math.max(Number(req.query?.days||7),1),90);
     const until=new Date(); const since=new Date(Date.now()-days*86400000);
     const iso=d=>d.toISOString().slice(0,10);
-    const visits=await vercel({url:"/v1/query/web-analytics/visits/count",params:{since:iso(since),until:iso(until)}});
-    const events=await vercel({url:"/v1/query/web-analytics/events/aggregate",params:{since:iso(since),until:iso(until),by:"eventName",limit:"100"}});
-    const classic=await vercel({url:"/v1/query/web-analytics/events/count",params:{since:iso(since),until:iso(until),filter:"eventName eq 'match_completed' and eventData/mode eq 'classic'"}});
-    const secret=await vercel({url:"/v1/query/web-analytics/events/count",params:{since:iso(since),until:iso(until),filter:"eventName eq 'match_completed' and eventData/mode eq 'secret_crush'"}});
+    const base={since:iso(since),until:iso(until)};
+    const [visits,events,classic,secret]=await Promise.all([
+      vercel({url:"/v1/query/web-analytics/visits/count",params:base}),
+      vercel({url:"/v1/query/web-analytics/events/aggregate",params:{...base,by:"eventName",limit:"100"}}),
+      vercel({url:"/v1/query/web-analytics/events/count",params:{...base,filter:"eventName eq 'match_completed' and eventData/mode eq 'classic'"}}),
+      vercel({url:"/v1/query/web-analytics/events/count",params:{...base,filter:"eventName eq 'match_completed' and eventData/mode eq 'secret_crush'"}})
+    ]);
     return send(res,200,{projectId,days,visits:visits.data||{},events:events.data||[],classic:classic.data||{},secret:secret.data||{},source:"Vercel Web Analytics"});
   } catch(error) {
     return send(res,502,{error:error.message});
