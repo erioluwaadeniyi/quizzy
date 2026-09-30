@@ -34,11 +34,12 @@ export default async function handler(req,res){
     };
     const safe=Buffer.from(JSON.stringify(event)).toString("base64url");
     const key=`analytics/events/${dayKey()}/${event.id}.json`;
-    const response=await fetch("https://blob.vercel-storage.com/"+key,{
+    const response=await fetch("https://vercel.com/api/blob/"+key,{
       method:"PUT",
       headers:{
         "authorization":"Bearer "+process.env.BLOB_READ_WRITE_TOKEN,
         "x-vercel-blob-access":"private",
+        "x-api-version":"12",
         "x-content-type":"application/json",
         "x-add-random-suffix":"0"
       },
