@@ -36,6 +36,7 @@ export default async function handler(req,res){
     const days=Math.min(Math.max(Number(req.query?.days||7),1),90);
     const since=new Date(Date.now()-days*86400000).toISOString();
     const rows=await query("flames_analytics_events?select=event_name,session_id,mode,result_key,created_at&created_at=gte."+encodeURIComponent(since)+"&order=created_at.desc&limit=10000");
+    const feedback=await query("flames_feedback?select=id,rating,category,message,path,created_at&created_at=gte."+encodeURIComponent(since)+"&order=created_at.desc&limit=500");
     const sessions=new Set(),events={},results={},daily={};let classic=0,secret=0;
     for(const e of rows){
       events[e.event_name]=(events[e.event_name]||0)+1;
@@ -47,6 +48,6 @@ export default async function handler(req,res){
         if(e.result_key)results[e.result_key]=(results[e.result_key]||0)+1;
       }
     }
-    return send(res,200,{source:"FLAMES custom analytics · Supabase",days,uniqueVisitors:sessions.size,pageviews:events.page_view||0,matchesStarted:events.match_started||0,matchesCompleted:events.match_completed||0,classicMatches:classic,secretCrushMatches:secret,shares:events.share_clicked||0,downloads:events.download_clicked||0,invites:events.invite_clicked||0,copies:events.copy_clicked||0,totalEvents:rows.length,events,results,daily});
+    return send(res,200,{source:"FLAMES custom analytics · Supabase",days,feedback,uniqueVisitors:sessions.size,pageviews:events.page_view||0,matchesStarted:events.match_started||0,matchesCompleted:events.match_completed||0,classicMatches:classic,secretCrushMatches:secret,shares:events.share_clicked||0,downloads:events.download_clicked||0,invites:events.invite_clicked||0,copies:events.copy_clicked||0,totalEvents:rows.length,events,results,daily});
   }catch(e){return send(res,500,{error:e.message});}
 }
