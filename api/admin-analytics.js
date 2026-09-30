@@ -15,6 +15,7 @@ function validToken(token) {
   const [value, signature] = token.split(".");
   if (!value || !signature) return false;
   const expected = sign(value);
+  if (signature.length !== expected.length) return false;
   return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected)) &&
     Date.now() - Number(value) < 1000 * 60 * 60 * 24 * 7;
 }
@@ -28,10 +29,21 @@ async function vercel(path) {
   const params = new URLSearchParams({ projectId, ...path.params });
   const teamId = process.env.VERCEL_TEAM_ID;
   if (teamId) params.set("teamId", teamId);
-  const response = await fetch("https://api.vercel.com" + path.url + "?" + params, {
-    headers: { Authorization: "Bearer " + process.env.VERCEL_TOKEN }
-  });
-  const data = await response.json();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  let response;
+  try {
+    response = await fetch("https://api.vercel.com" + path.url + "?" + params, {
+      headers: { Authorization: "Bearer " + process.env.VERCEL_TOKEN },
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") throw new Error("Vercel Analytics request timed out after 8 seconds.");
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error?.message || "Vercel Analytics request failed");
   return data;
 }
