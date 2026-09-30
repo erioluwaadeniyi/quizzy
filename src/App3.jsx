@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import "./App.css";
+import { trackEvent } from "./analytics.js";
 
 const RESULTS = {
   F: { name:"Friends", emoji:"🤝", messages:["The universe said: relax 😂 You two are giving best-friend energy.","No drama, just vibes. These names are screaming friendship 😂.","Plot twist: the perfect person to send memes to all day."] },
@@ -60,7 +61,6 @@ function downloadResultCard(nameA,nameB,resultKey,percent,message,secret){
   image.src=url;
 }
 
-function trackEvent(name, properties={}){ try { window.va?.("event", { name, ...properties }); } catch {} }
 
 export default function App(){
   const [a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0);
