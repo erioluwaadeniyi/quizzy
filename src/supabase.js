@@ -74,46 +74,6 @@ async function signUp(email,password,metadata){
     return {data:{user:body.user||body,session:body.access_token?body:null},error:null};
   }catch(e){return {data:{user:null,session:null},error:{message:e.message||"Network error."}}}
 }
-async function resetPasswordForEmail(email){
-  try{
-    const r=await fetch(SUPABASE_URL+"/auth/v1/recover",{
-      method:"POST",
-      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},
-      body:JSON.stringify({email})
-    });
-    const body=await r.json().catch(()=>({}));
-    if(!r.ok)return {data:null,error:{message:body.msg||body.error_description||body.message||"Unable to send the reset code."}};
-    return {data:body,error:null};
-  }catch(e){return {data:null,error:{message:e.message||"Network error."}}}
-}
-async function verifyOtp({email,token,type="recovery"}){
-  try{
-    const r=await fetch(SUPABASE_URL+"/auth/v1/verify",{
-      method:"POST",
-      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},
-      body:JSON.stringify({email,token,type})
-    });
-    const body=await r.json().catch(()=>({}));
-    if(!r.ok)return {data:{user:null,session:null},error:{message:body.msg||body.error_description||body.message||"That reset code is invalid or expired."}};
-    if(body.access_token)writeSession(body);
-    if(body.access_token)emit(type==="recovery"?"PASSWORD_RECOVERY":"SIGNED_IN",body);
-    return {data:{user:body.user||null,session:body.access_token?body:null},error:null};
-  }catch(e){return {data:{user:null,session:null},error:{message:e.message||"Network error."}}}
-}
-async function updateUser(attributes){
-  try{
-    const session=await refreshIfNeeded();
-    if(!session?.access_token)return {data:null,error:{message:"Your password reset session is missing or expired. Request a new reset link."}};
-    const r=await authFetch("/auth/v1/user",{
-      method:"PUT",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify(attributes)
-    });
-    const body=await r.json().catch(()=>({}));
-    if(!r.ok)return {data:null,error:{message:body.msg||body.error_description||body.message||"Unable to update your password."}};
-    return {data:body,error:null};
-  }catch(e){return {data:null,error:{message:e.message||"Network error."}}}
-}
 async function signOut({silent=false}={}){
   const session=readSession();
   try{if(session?.access_token)await authFetch("/auth/v1/logout",{method:"POST"})}catch{}
@@ -158,9 +118,6 @@ export const supabase={
     getUser:async()=>({data:{user:await getUser()}}),
     signInWithPassword:({email,password})=>signIn(email,password),
     signUp:({email,password,options})=>signUp(email,password,options?.data||{}),
-    resetPasswordForEmail,
-    verifyOtp,
-    updateUser,
     signOut,
     onAuthStateChange(callback){listeners.add(callback);return {data:{subscription:{unsubscribe:()=>listeners.delete(callback)}}}}
   },
