@@ -74,7 +74,56 @@ async function signUp(email,password,metadata){
     return {data:{user:body.user||body,session:body.access_token?body:null},error:null};
   }catch(e){return {data:{user:null,session:null},error:{message:e.message||"Network error."}}}
 }
-async function signOut(){
+async function resetPasswordForEmail(email,{redirectTo}={}){
+  try{
+    const r=await fetch(SUPABASE_URL+"/auth/v1/recover",{
+      method:"POST",
+      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({email,redirect_to:redirectTo})
+    });
+    const body=await r.json().catch(()=>({}));
+    if(!r.ok)return {data:null,error:{message:body.msg||body.error_description||body.message||"Unable to send the reset email."}};
+    return {data:body,error:null};
+  }catch(e){return {data:null,error:{message:e.message||"Network error."}}}
+}
+async function updateUser(attributes){
+  try{
+    const session=await refreshIfNeeded();
+    if(!session?.access_token)return {data:null,error:{message:"Your password reset session is missing or expired. Request a new reset link."}};
+    const r=await authFetch("/auth/v1/user",{
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(attributes)
+    });
+    const body=await r.json().catch(()=>({}));
+    if(!r.ok)return {data:null,error:{message:body.msg||body.error_description||body.message||"Unable to update your password."}};
+    return {data:body,error:null};
+  }catch(e){return {data:null,error:{message:e.message||"Network error."}}}
+}
+async function recoverSessionFromUrl(){
+  try{
+    const hash=window.location.hash.replace(/^#/,"");
+    if(!hash)return {session:await refreshIfNeeded()};
+    const params=new URLSearchParams(hash);
+    const access_token=params.get("access_token");
+    const refresh_token=params.get("refresh_token");
+    const type=params.get("type");
+    if(!access_token||!refresh_token)return {session:await refreshIfNeeded()};
+    const expiresIn=Number(params.get("expires_in")||3600);
+    const session={
+      access_token,
+      refresh_token,
+      token_type:params.get("token_type")||"bearer",
+      expires_in:expiresIn,
+      expires_at:Math.floor(Date.now()/1000)+expiresIn
+    };
+    writeSession(session);
+    window.history.replaceState({},document.title,window.location.pathname+window.location.search);
+    emit(type==="recovery"?"PASSWORD_RECOVERY":"SIGNED_IN",session);
+    return {session};
+  }catch{return {session:null}}
+}
+async function signOut({silent=false}={}){
   const session=readSession();
   try{if(session?.access_token)await authFetch("/auth/v1/logout",{method:"POST"})}catch{}
   writeSession(null);emit("SIGNED_OUT",null);return {error:null};
@@ -118,6 +167,9 @@ export const supabase={
     getUser:async()=>({data:{user:await getUser()}}),
     signInWithPassword:({email,password})=>signIn(email,password),
     signUp:({email,password,options})=>signUp(email,password,options?.data||{}),
+    resetPasswordForEmail,
+    updateUser,
+    recoverSessionFromUrl,
     signOut,
     onAuthStateChange(callback){listeners.add(callback);return {data:{subscription:{unsubscribe:()=>listeners.delete(callback)}}}}
   },
