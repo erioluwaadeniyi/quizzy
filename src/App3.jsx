@@ -126,7 +126,8 @@ function ForgotPasswordPage(){
   const [confirm,setConfirm]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
-  const [verified,setVerified]=useState(false);\n  const [resetToken,setResetToken]=useState("");
+  const [verified,setVerified]=useState(false);
+  const [resetToken,setResetToken]=useState("");
   const [done,setDone]=useState(false);
 
   const sendCode=async e=>{
