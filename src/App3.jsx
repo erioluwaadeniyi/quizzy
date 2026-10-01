@@ -134,39 +134,6 @@ const FLAMES_QUOTES=[
   "Your streak is proof that you kept coming back for fun.",
   "There is no pressure here. Just names, vibes and a little chaos."
 ];
-function Icon({name,size=20,stroke=1.9}){
-  const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:stroke,strokeLinecap:"round",strokeLinejoin:"round",ariaHidden:true};
-  const paths={
-    home:<><path d="m3 10 9-7 9 7"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></>,
-    play:<><path d="M8 5v14l11-7L8 5Z"/></>,
-    history:<><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></>,
-    trophy:<><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4v2a4 4 0 0 0 4 4"/><path d="M17 6h3v2a4 4 0 0 1-4 4"/></>,
-    flame:<path d="M13 2c2.2 5.8-2.1 7.3-.4 10.1 1 1.7 2.7 1.7 3.6-.1 2.4 2 3.8 4.3 3.8 6.6 0 3.9-3.1 6.9-7 6.9s-7-3-7-6.9c0-3.4 1.9-6.4 4.8-8.9-.2 2.7.8 4.2 2 4.7-.5-4.6 1.9-7.2.2-12.4Z"/>,
-    spark:<><path d="m12 2 1.2 6.8L20 10l-6.8 1.2L12 18l-1.2-6.8L4 10l6.8-1.2L12 2Z"/><path d="m19 15 .6 2.4L22 18l-2.4.6L19 21l-.6-2.4L16 18l2.4-.6L19 15Z"/></>,
-    arrow:<><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></>,
-    lock:<><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,
-    user:<><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></>,
-    settings:<><path d="M12 3v2"/><path d="M12 19v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="m4.9 19.1 1.4-1.4"/><path d="m17.7 6.3 1.4-1.4"/><circle cx="12" cy="12" r="4"/></>,
-    check:<><path d="m5 12 4 4L19 6"/></>,
-    crown:<><path d="m4 7 4 5 4-8 4 8 4-5-2 11H6L4 7Z"/></>,
-    bolt:<path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/>,
-    clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
-  };
-  return <svg {...p}>{paths[name]||paths.spark}</svg>;
-}
-function relativeTime(value){
-  const diff=Math.max(0,Date.now()-new Date(value).getTime());
-  const mins=Math.floor(diff/60000); if(mins<1)return "just now"; if(mins<60)return mins+"m ago";
-  const hours=Math.floor(mins/60); if(hours<24)return hours+"h ago";
-  const days=Math.floor(hours/24); return days+"d ago";
-}
-const FLAMES_QUOTES=[
-  "Some matches are better as stories than statistics.",
-  "A little curiosity can turn an ordinary day into a FLAMES moment.",
-  "Today’s energy: ask the question you were too shy to ask.",
-  "Your streak is proof that you kept coming back for fun.",
-  "There is no pressure here. Just names, vibes and a little chaos."
-];
 
 function Icon({name,size=21,stroke=2}){
   const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:stroke,strokeLinecap:"round",strokeLinejoin:"round",ariaHidden:true};
