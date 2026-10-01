@@ -409,44 +409,48 @@ function PublicGame({initialView="dashboard",appMode=false,appNavigate=null}){
         <div className="hero"><small>{secretMode?"02 · KEEP IT SECRET":"01 · NAME CHEMISTRY"}</small><h1>{secretMode?<>Your crush.<br/><em>Your secret.</em> Your result.</>:<>Two names.<br/><em>One unexpected</em> connection.</>}</h1><p>{secretMode?"Enter the name of the person on your mind. Their name stays hidden on the result.":"Bring two names together and let the classic FLAMES game reveal what kind of connection they have."}</p></div>
         <form className="card" onSubmit={start}><div className="label">{secretMode?"SECRET CRUSH MATCH":"START A MATCH"}<b>✦</b></div><div className="fields"><label>Your name<input value={a} onChange={e=>setA(e.target.value)} placeholder="e.g. Alex" maxLength={30} autoComplete="off"/></label><strong>+</strong><label>{secretMode?"Your crush's name":"Their name"}<input value={b} onChange={e=>setB(e.target.value)} placeholder={secretMode?"keep it secret 👀":"e.g. Jamie"} maxLength={30} autoComplete="off"/></label></div><button className="match" disabled={!a.trim()||!b.trim()}><span>{secretMode?"Reveal secret result":"Discover your match"}</span><b>↗</b></button><p className="note">{secretMode?"Their name stays on this device and is not saved by FLAMES.":(user?"Your result will be saved to your FLAMES account.":"No account needed. Just play.")}</p></form>
         <div className="letters">{LETTERS.map((letter,index)=><span style={{animationDelay:index*0.12+"s"}} key={letter}>{letter}</span>)}</div>
-        <button type="button" className="invite-home" onClick={inviteFriends}>🔥 Invite friends to play <b>↗</b></button>
+        {!appMode&&<>
+          <button type="button" className="invite-home" onClick={inviteFriends}>🔥 Invite friends to play <b>↗</b></button>
 
-        <section className="flames-info-section how-flames">
-          <div className="info-heading"><small>THE CLASSIC GAME</small><h2>How FLAMES works.</h2><p>It is simple on purpose. Put two names in, let the letters do their thing, and see what comes out.</p></div>
-          <div className="how-grid">
-            <div className="how-item"><span>01</span><div><h3>Enter two names</h3><p>Use your name and the person you want to check.</p></div></div>
-            <div className="how-item"><span>02</span><div><h3>FLAMES does the math</h3><p>Matching letters are crossed out and the classic elimination game runs.</p></div></div>
-            <div className="how-item"><span>03</span><div><h3>Reveal the result</h3><p>One of six letters remains: Friends, Lovers, Affection, Marriage, Enemies or Siblings.</p></div></div>
-          </div>
-        </section>
+          <section className="flames-info-section how-flames">
+            <div className="info-heading"><small>THE CLASSIC GAME</small><h2>How FLAMES works.</h2><p>It is simple on purpose. Put two names in, let the letters do their thing, and see what comes out.</p></div>
+            <div className="how-grid">
+              <div className="how-item"><span>01</span><div><h3>Enter two names</h3><p>Use your name and the person you want to check.</p></div></div>
+              <div className="how-item"><span>02</span><div><h3>FLAMES does the math</h3><p>Matching letters are crossed out and the classic elimination game runs.</p></div></div>
+              <div className="how-item"><span>03</span><div><h3>Reveal the result</h3><p>One of six letters remains: Friends, Lovers, Affection, Marriage, Enemies or Siblings.</p></div></div>
+            </div>
+          </section>
 
-        <section className="flames-info-section meaning-section">
-          <div className="info-heading centered"><small>SIX POSSIBILITIES</small><h2>What will FLAMES say?</h2></div>
-          <div className="meaning-grid">
-            <div className="meaning-card"><b>F</b><div><strong>Friends</strong><span>Bestie energy 🤝</span></div></div>
-            <div className="meaning-card"><b>L</b><div><strong>Lovers</strong><span>Romance detected ❤️</span></div></div>
-            <div className="meaning-card"><b>A</b><div><strong>Affection</strong><span>Something sweet 💫</span></div></div>
-            <div className="meaning-card"><b>M</b><div><strong>Marriage</strong><span>Skipping straight ahead 💍</span></div></div>
-            <div className="meaning-card"><b>E</b><div><strong>Enemies</strong><span>Chaos incoming ⚡</span></div></div>
-            <div className="meaning-card"><b>S</b><div><strong>Siblings</strong><span>Family vibes 🫶</span></div></div>
-          </div>
-        </section>
+          <section className="flames-info-section meaning-section">
+            <div className="info-heading centered"><small>SIX POSSIBILITIES</small><h2>What will FLAMES say?</h2></div>
+            <div className="meaning-grid">
+              <div className="meaning-card"><b>F</b><div><strong>Friends</strong><span>Bestie energy 🤝</span></div></div>
+              <div className="meaning-card"><b>L</b><div><strong>Lovers</strong><span>Romance detected ❤️</span></div></div>
+              <div className="meaning-card"><b>A</b><div><strong>Affection</strong><span>Something sweet 💫</span></div></div>
+              <div className="meaning-card"><b>M</b><div><strong>Marriage</strong><span>Skipping straight ahead 💍</span></div></div>
+              <div className="meaning-card"><b>E</b><div><strong>Enemies</strong><span>Chaos incoming ⚡</span></div></div>
+              <div className="meaning-card"><b>S</b><div><strong>Siblings</strong><span>Family vibes 🫶</span></div></div>
+            </div>
+          </section>
 
-        <section className="flames-info-section final-invite-section">
-          <div className="final-invite-inner">
-            <div className="final-flame"><Flame/></div>
-            <div><small>READY FOR ANOTHER ONE?</small><h2>Send FLAMES to someone.</h2><p>Drop the link in the group chat, challenge a friend, or keep your crush result to yourself. 👀</p></div>
-            <button type="button" onClick={inviteFriends}>Invite someone ↗</button>
-          </div>
-        </section></>}
+          <section className="flames-info-section final-invite-section">
+            <div className="final-invite-inner">
+              <div className="final-flame"><Flame/></div>
+              <div><small>READY FOR ANOTHER ONE?</small><h2>Send FLAMES to someone.</h2><p>Drop the link in the group chat, challenge a friend, or keep your crush result to yourself. 👀</p></div>
+              <button type="button" onClick={inviteFriends}>Invite someone ↗</button>
+            </div>
+          </section>
+        </>}        </section></>}
       {loading&&<div className="loading"><div className="names"><b>{a.trim()}</b><span><Flame/></span><b>{secretMode?"Secret Crush":b.trim()}</b></div><div className="ring"><div><Flame/></div></div><p>{secretMode?"Checking the secret connection":"Calculating your connection"}<span>...</span></p><div className="bars"><i/><i/><i/><i/><i/></div></div>}
       {key&&result&&<div className={"result result-"+key.toLowerCase()}><div className="resulttop"><button onClick={reset}>← Try another person</button><small>{secretMode?"SECRET RESULT":"RESULT REVEALED"}</small></div><div className="resultcard"><div className="result-logo"><img src="/favicon.svg" alt="" /></div><div className="result-sparkles"><i/><i/><i/><i/><i/><i/></div><div className="pair">{displayPair}</div><div className="emoji">{result.emoji}</div><small>THE FLAMES SAYS</small><h2>{result.name}</h2><p>{result.messages[quipIndex]}</p><div className="compat"><div><span>PLAYFUL COMPATIBILITY</span><b>{pct}%</b></div><div className="meter"><i style={{width:pct+"%"}}/></div><small>Entertainment only — generated from the names.</small></div><div className="actions"><button className="share-primary" onClick={()=>{setShareNotice("");setShareOpen(true)}}>Share result ↗</button><button onClick={download}>{downloaded?"Downloaded ✓":"Download card ↓"}</button><button onClick={copy}>{copied?"Copied ✓":"Copy result"}</button></div></div><p className="disclaimer">FLAMES is a classic name game, not a real measure of relationship compatibility.</p>{!user&&!nudgeDismissed&&<div className="account-nudge"><div className="nudge-flame"><Flame/></div><div className="nudge-copy"><small>KEEP YOUR FLAMES</small><strong>Create an account today</strong><p>Save your results and keep your FLAMES history connected.</p></div><div className="nudge-actions"><a className="header-link-button header-signup" href="/register">Create account</a><button className="nudge-later" onClick={()=>setNudgeDismissed(true)}>Maybe later</button></div></div>}</div>}
     </section>
     {shareOpen&&<div className="share-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShareOpen(false)}}><div className="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title"><button className="share-close" type="button" aria-label="Close share options" onClick={()=>setShareOpen(false)}>×</button><div className="share-kicker">YOUR RESULT IS READY</div><h2 id="share-title">Share your FLAMES result</h2><p className="share-sub">Send the card directly, or choose a platform.</p><button className="share-card-btn" type="button" onClick={shareCard}>↗ <span>Share result card</span><small>Choose an app on your device</small></button><div className="share-divider"><span>or choose a platform</span></div><div className="platform-grid"><button type="button" onClick={()=>shareTo("x")}><b>𝕏</b><span>X</span></button><button type="button" onClick={()=>shareTo("instagram")}><b>◎</b><span>Instagram</span></button><button type="button" onClick={()=>shareTo("whatsapp")}><b>◔</b><span>WhatsApp</span></button><button type="button" onClick={()=>shareTo("facebook")}><b>f</b><span>Facebook</span></button><button type="button" onClick={()=>shareTo("threads")}><b>@</b><span>Threads</span></button><button type="button" onClick={()=>shareTo("reddit")}><b>●</b><span>Reddit</span></button><button type="button" onClick={()=>shareTo("discord")}><b>◌</b><span>Discord</span></button></div>{shareNotice&&<div className="share-notice">{shareNotice}</div>}<button type="button" className="share-copy-link" onClick={copy}>{copied?"Result copied ✓":"Copy result text"}</button><p className="share-footnote">On phones that support it, “Share result card” opens the system share sheet so the image can go straight to Instagram, WhatsApp, Facebook and other apps. On desktop, the platform buttons open their share pages.</p></div></div>}
-    <footer><span>FLAMES</span><span>Classic game · Modern experience</span><button type="button" className="feedback-link" onClick={()=>setFeedbackOpen(true)}>Feedback</button><span>🔥</span></footer>
-    {miniPromo&&<aside className="mini-promo"><button className="mini-close" aria-label="Dismiss MINI BOX promotion" onClick={dismissMiniPromo}>×</button><div className="mini-promo-kicker">ANOTHER LITTLE THING</div><strong>Try MINI BOX</strong><p>Ask questions anonymously and get real human answers.</p><a href="https://minibox-app.vercel.app/" target="_blank" rel="noreferrer">Try MINI BOX ↗</a></aside>}
-    {feedbackOpen&&<div className="feedback-backdrop" role="dialog" aria-modal="true" aria-label="FLAMES feedback"><div className="feedback-modal"><button className="feedback-close" onClick={()=>setFeedbackOpen(false)} aria-label="Close feedback">×</button>{feedbackSent?<div className="feedback-success"><div>✓</div><h3>Thanks for the feedback.</h3><p>It helps us improve FLAMES.</p></div>:<><small>OPTIONAL FEEDBACK</small><h3>How's FLAMES?</h3><p className="feedback-sub">Tell us what you think. You can close this without sending anything.</p><div className="feedback-ratings">{[["love_it","😍","Love it"],["good","🙂","Good"],["okay","😐","Okay"],["needs_work","😕","Needs work"]].map(([v,e,t])=><button key={v} type="button" className={feedbackRating===v?"selected":""} onClick={()=>setFeedbackRating(v)}><span>{e}</span>{t}</button>)}</div><div className="feedback-field"><label>Anything we should improve? <em>Optional</em></label><textarea value={feedbackMessage} onChange={e=>setFeedbackMessage(e.target.value)} maxLength={1000} placeholder="Tell us what you think..."/></div><div className="feedback-field"><label>Category <em>Optional</em></label><div className="feedback-cats">{[["bug","Bug"],["idea","Idea"],["ui","UI"],["game","Game"],["other","Other"]].map(([v,t])=><button key={v} type="button" className={feedbackCategory===v?"selected":""} onClick={()=>setFeedbackCategory(v)}>{t}</button>)}</div></div><button className="feedback-submit" disabled={feedbackSending||(!feedbackRating&&!feedbackMessage.trim())} onClick={sendFeedback}>{feedbackSending?"Sending...":"Send feedback"}</button></>}</div></div>}
-  </main>;
+
+    {!appMode&&<>
+      <footer><span>FLAMES</span><span>Classic game · Modern experience</span><button type="button" className="feedback-link" onClick={()=>setFeedbackOpen(true)}>Feedback</button><span>🔥</span></footer>
+          {miniPromo&&<aside className="mini-promo"><button className="mini-close" aria-label="Dismiss MINI BOX promotion" onClick={dismissMiniPromo}>×</button><div className="mini-promo-kicker">ANOTHER LITTLE THING</div><strong>Try MINI BOX</strong><p>Ask questions anonymously and get real human answers.</p><a href="https://minibox-app.vercel.app/" target="_blank" rel="noreferrer">Try MINI BOX ↗</a></aside>}
+          {feedbackOpen&&<div className="feedback-backdrop" role="dialog" aria-modal="true" aria-label="FLAMES feedback"><div className="feedback-modal"><button className="feedback-close" onClick={()=>setFeedbackOpen(false)} aria-label="Close feedback">×</button>{feedbackSent?<div className="feedback-success"><div>✓</div><h3>Thanks for the feedback.</h3><p>It helps us improve FLAMES.</p></div>:<><small>OPTIONAL FEEDBACK</small><h3>How's FLAMES?</h3><p className="feedback-sub">Tell us what you think. You can close this without sending anything.</p><div className="feedback-ratings">{[["love_it","😍","Love it"],["good","🙂","Good"],["okay","😐","Okay"],["needs_work","😕","Needs work"]].map(([v,e,t])=><button key={v} type="button" className={feedbackRating===v?"selected":""} onClick={()=>setFeedbackRating(v)}><span>{e}</span>{t}</button>)}</div><div className="feedback-field"><label>Anything we should improve? <em>Optional</em></label><textarea value={feedbackMessage} onChange={e=>setFeedbackMessage(e.target.value)} maxLength={1000} placeholder="Tell us what you think..."/></div><div className="feedback-field"><label>Category <em>Optional</em></label><div className="feedback-cats">{[["bug","Bug"],["idea","Idea"],["ui","UI"],["game","Game"],["other","Other"]].map(([v,t])=><button key={v} type="button" className={feedbackCategory===v?"selected":""} onClick={()=>setFeedbackCategory(v)}>{t}</button>)}</div></div><button className="feedback-submit" disabled={feedbackSending||(!feedbackRating&&!feedbackMessage.trim())} onClick={sendFeedback}>{feedbackSending?"Sending...":"Send feedback"}</button></>}</div></div>}
+    </>}  </main>;
 }
 
 function AppNavigate({children,path}){ return <button type="button" onClick={()=>{window.history.pushState({}, "", path);window.dispatchEvent(new PopStateEvent("popstate"));}}>{children}</button>; }
