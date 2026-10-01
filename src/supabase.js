@@ -49,6 +49,21 @@ async function getUser(){
   if(!r.ok)return null;
   return r.json();
 }
+async function signInAnonymously(options={}){
+  try{
+    const r=await fetch(SUPABASE_URL+"/auth/v1/signup",{
+      method:"POST",
+      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify({data:options.data||{}})
+    });
+    const body=await r.json().catch(()=>({}));
+    if(!r.ok)return {data:{user:null,session:null},error:{message:body.msg||body.error_description||"Unable to create account."}};
+    if(body.access_token)writeSession(body);
+    emit(body.access_token?"SIGNED_IN":"SIGNED_UP",body.access_token?body:null);
+    return {data:{user:body.user||body,session:body.access_token?body:null},error:null};
+  }catch(e){return {data:{user:null,session:null},error:{message:e.message||"Network error."}}}
+}
+
 async function signIn(email,password){
   try{
     const r=await fetch(SUPABASE_URL+"/auth/v1/token?grant_type=password",{
@@ -117,6 +132,7 @@ export const supabase={
   auth:{
     getUser:async()=>({data:{user:await getUser()}}),
     signInWithPassword:({email,password})=>signIn(email,password),
+    signInAnonymously:({options}={})=>signInAnonymously(options),
     signUp:({email,password,options})=>signUp(email,password,options?.data||{}),
     signOut,
     onAuthStateChange(callback){listeners.add(callback);return {data:{subscription:{unsubscribe:()=>listeners.delete(callback)}}}}
