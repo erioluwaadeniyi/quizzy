@@ -166,12 +166,17 @@ function relativeTime(value){const diff=Math.max(0,Date.now()-new Date(value).ge
 function resultCounts(matches){return matches.reduce((acc,m)=>{acc[m.result_key]=(acc[m.result_key]||0)+1;return acc},{});}
 
 function AppNav({profile,streak,view,setView,onLogout}){
+  const go=v=>setView(v);
+  const items=[["dashboard","Home","home"],["game","Play","play"],["history","History","history"],["circle","Private Circle","users"],["achievements","Achievements","trophy"]];
   return <header className="app-shell-nav">
-    <button className="app-shell-brand" onClick={()=>setView("dashboard")}><span className="app-shell-logo"><Flame/></span><span>FLAMES</span></button>
+    <button className="app-shell-brand" type="button" onClick={()=>go("dashboard")}><span className="app-shell-logo"><Flame/></span><span>FLAMES</span></button>
     <nav className="app-shell-mainnav">
-      {[["dashboard","Home","home"],["game","Play","play"],["history","History","history"],["circle","Private Circle","users"],["achievements","Achievements","trophy"]].map(([v,label,icon])=><button key={v} className={view===v?"active":""} onClick={()=>setView(v)}><Icon name={icon} size={19}/><span>{label}</span></button>)}
+      {items.map(([v,label,icon])=><button type="button" key={v} className={view===v?"active":""} onClick={()=>go(v)}><Icon name={icon} size={19}/><span>{label}</span></button>)}
     </nav>
-    <div className="app-shell-actions"><span className="nav-streak"><Icon name="flame" size={17}/><b>{streak}</b> day streak</span><button className="nav-profile-button" onClick={()=>setView("profile")}><Avatar profile={profile} size="sm"/></button></div>
+    <div className="app-shell-actions">
+      <span className="nav-streak"><Icon name="flame" size={17}/><b>{streak||0}</b><span>day streak</span></span>
+      <button type="button" className="nav-profile-button" aria-label="Open profile" onClick={()=>go("profile")}><Avatar profile={profile} size="sm"/></button>
+    </div>
   </header>;
 }
 
@@ -181,71 +186,142 @@ function Dashboard({profile,savedCount,streak,recentMatches,setView}){
   const counts=resultCounts(recentMatches);
   const topKey=Object.keys(counts).sort((x,y)=>(counts[y]||0)-(counts[x]||0))[0];
   const top=topKey?RESULTS[topKey]:null;
+  const latest=recentMatches[0];
   return <main className="social-page">
-    <div className="social-orb orb-a"/><div className="social-orb orb-b"/>
     <AppNav profile={profile} streak={streak} view="dashboard" setView={setView}/>
     <div className="social-layout">
-      <aside className="social-left">
-        <div className="mini-profile-card"><Avatar profile={profile} size="lg"/><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div><span className="online-dot"/></div>
-        <div className="side-nav-group">
-          {[["dashboard","Your space","home"],["game","Play FLAMES","play"],["history","Your matches","history"],["circle","Private Circle","users"],["achievements","Achievements","trophy"],["profile","Profile","user"],["settings","Settings","settings"]].map(([v,l,ic])=><button key={v} className={v==="dashboard"?"selected":""} onClick={()=>setView(v)}><Icon name={ic}/><span>{l}</span></button>)}
-        </div>
-        <div className="side-fun-card"><div className="side-fun-icon"><Icon name="spark" size={20}/></div><div><strong>Just for fun</strong><p>No pressure. No awkward scoring. Just FLAMES.</p></div></div>
-      </aside>
       <section className="social-main">
         <div className="social-hero">
-          <div><span className="eyebrow">WELCOME TO YOUR FLAMES</span><h1>Hey {first}. <em>What are we testing today?</em></h1><p>“{quote}”</p></div>
-          <button className="big-play-btn" onClick={()=>setView("game")}><Icon name="play" size={19}/> Play a match <Icon name="arrow" size={18}/></button>
+          <div>
+            <span className="eyebrow">YOUR FLAMES SPACE</span>
+            <h1>Hey {first}. <em>Ready for another match?</em></h1>
+            <p>“{quote}”</p>
+          </div>
+          <button className="big-play-btn" type="button" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play FLAMES <Icon name="arrow" size={17}/></button>
         </div>
-        <div className="story-strip">
-          <div className="story-card story-fire"><span className="story-icon"><Icon name="flame" size={22}/></span><div><b>{streak||0} day streak</b><small>{streak>1?"You are on a roll.":"Play again tomorrow to keep it going."}</small></div></div>
-          <div className="story-card"><span className="story-icon warm"><Icon name="trophy" size={22}/></span><div><b>{savedCount} saved matches</b><small>{savedCount?"Your little FLAMES history is growing.":"Your first match is waiting."}</small></div></div>
-          <div className="story-card"><span className="story-icon purple"><Icon name="spark" size={22}/></span><div><b>{top?top.name:"New energy"}</b><small>{top?counts[topKey]+" times in your saved history.":"Play a few matches and discover your pattern."}</small></div></div>
-        </div>
-        <div className="social-grid">
-          <section className="social-feed-card featured">
-            <div className="feed-head"><div><span>YOUR DAILY FLAME</span><h2>Keep the fire curious.</h2></div><span className="live-chip"><i/>Today</span></div>
-            <p className="feature-copy">There is always another name pair, another ridiculous result, another reason to laugh.</p>
-            <div className="quote-bubble">“{quote}”</div>
-            <div className="feature-actions"><button onClick={()=>setView("game")}><Icon name="play" size={17}/> Test another pair</button><button className="quiet-action" onClick={()=>setView("circle")}><Icon name="users" size={17}/> See your Circle</button></div>
-          </section>
-          <section className="social-feed-card">
-            <div className="feed-head"><div><span>RECENT FLAMES</span><h3>Your latest moments</h3></div><button className="text-link" onClick={()=>setView("history")}>See all <Icon name="arrow" size={15}/></button></div>
-            {recentMatches.length?<div className="match-list">{recentMatches.slice(0,5).map(m=><div className="match-item" key={m.id}><div className={"match-orb result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div><div><strong>{m.name_a} <i>×</i> {m.secret_mode?"Secret Crush":m.name_b}</strong><small>{RESULTS[m.result_key]?.name||"FLAMES"} · {relativeTime(m.created_at)}</small></div><b>{m.percent}%</b></div>)}</div>:<div className="empty-space"><Icon name="spark" size={26}/><strong>Nothing here yet.</strong><p>Your next match will become your first little memory.</p><button onClick={()=>setView("game")}>Make your first match <Icon name="arrow" size={15}/></button></div>}
-          </section>
+
+        <section className="social-feed-card featured">
+          <div className="feed-head"><div><span>TODAY'S FLAME</span><h2>Two names. One ridiculous result.</h2></div><span className="live-chip"><i/>Just for fun</span></div>
+          <p className="feature-copy">Classic FLAMES is still the main event. Run a match, save the result, and come back whenever curiosity hits.</p>
+          <div className="quote-bubble">“{quote}”</div>
+          <div className="feature-actions">
+            <button type="button" onClick={()=>setView("game")}><Icon name="play" size={17}/> Start a match</button>
+            <button type="button" className="quiet-action" onClick={()=>setView("circle")}><Icon name="users" size={17}/> Open Private Circle</button>
+          </div>
+        </section>
+
+        <section className="social-feed-card">
+          <div className="feed-head">
+            <div><span>RECENT FLAMES</span><h3>Your latest moments</h3></div>
+            <button type="button" className="text-link" onClick={()=>setView("history")}>View history <Icon name="arrow" size={15}/></button>
+          </div>
+          {recentMatches.length?<div className="match-list">{recentMatches.slice(0,6).map(m=><div className="match-item" key={m.id}>
+            <div className={"match-orb result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div>
+            <div><strong>{m.name_a} <i>×</i> {m.secret_mode?"Secret Crush":m.name_b}</strong><small>{RESULTS[m.result_key]?.name||"FLAMES"} · {relativeTime(m.created_at)}</small></div>
+            <b>{m.percent}%</b>
+          </div>)}</div>:<div className="empty-space"><Icon name="spark" size={27}/><strong>Your FLAMES history starts here.</strong><p>Play your first match and your saved result will appear on this feed.</p><button type="button" onClick={()=>setView("game")}>Play your first match <Icon name="arrow" size={15}/></button></div>}
+        </section>
+
+        <div className="dashboard-footer-actions">
+          <button type="button" onClick={()=>setView("achievements")}><Icon name="trophy" size={17}/><span><strong>Achievements</strong><small>See your milestones and records.</small></span><Icon name="arrow" size={16}/></button>
+          <button type="button" onClick={()=>setView("profile")}><Avatar profile={profile} size="sm"/><span><strong>Your profile</strong><small>@{profile?.username||"flames"}</small></span><Icon name="arrow" size={16}/></button>
         </div>
       </section>
+
       <aside className="social-right">
-        <section className="highlight-card"><div className="highlight-icon"><Icon name="crown" size={22}/></div><span>YOUR RECORD</span><h3>{top?top.name:"Still loading"}</h3><p>{top?counts[topKey]+" saved results":"Your record starts with your first saved match."}</p></section>
-        <section className="progress-card"><div className="progress-top"><span>YOUR NEXT UNLOCK</span><b>{Math.min(savedCount,5)}/5</b></div><h3>{savedCount>=5?"FLAMES Regular":"Save 5 matches"}</h3><div className="progress-bar"><i style={{width:Math.min(savedCount*20,100)+"%"}}/></div><p>{savedCount>=5?"You unlocked a real milestone.":"Keep playing and your profile gets more interesting."}</p></section>
-        <section className="fun-quote-card"><Icon name="spark" size={19}/><span>ONE MORE THING</span><p>{FLAMES_QUOTES[(new Date().getDay()+streak)%FLAMES_QUOTES.length]}</p></section>
+        <section className="side-profile-card"><Avatar profile={profile} size="lg"/><span className="eyebrow">YOUR PROFILE</span><h3>{profile?.display_name||"FLAMES Friend"}</h3><p>@{profile?.username||"flames"}</p><button type="button" onClick={()=>setView("profile")}>Open profile <Icon name="arrow" size={15}/></button></section>
+        <section className="side-stat-card"><span className="side-stat-icon"><Icon name="flame" size={20}/></span><div><span>STREAK</span><strong>{streak||0} day{streak===1?"":"s"}</strong><p>{streak>1?"You are on a roll.":"Play tomorrow to keep it going."}</p></div></section>
+        <section className="side-stat-card"><span className="side-stat-icon warm"><Icon name="history" size={20}/></span><div><span>SAVED MATCHES</span><strong>{savedCount}</strong><p>{savedCount?"Your FLAMES memories are building.":"Your first one is waiting."}</p></div></section>
+        <section className="side-record-card"><span className="eyebrow">YOUR RECORD</span><strong>{top?top.emoji:"✦"}</strong><h3>{top?top.name:"No pattern yet"}</h3><p>{top?counts[topKey]+" saved result"+(counts[topKey]===1?"":"s"):"Play a few matches and your history will start showing a pattern."}</p>{latest&&<button type="button" onClick={()=>setView("history")}>See your latest <Icon name="arrow" size={15}/></button>}</section>
       </aside>
     </div>
   </main>;
 }
 
 function HistoryPage({profile,streak,recentMatches,setView}){
- return <main className="social-page"><AppNav profile={profile} streak={streak} view="history" setView={setView}/><div className="content-page"><div className="page-intro"><span className="eyebrow">YOUR HISTORY</span><h1>Every match has a little story.</h1><p>Your saved FLAMES results, newest first.</p></div><section className="large-card">{recentMatches.length?<div className="history-grid">{recentMatches.map(m=><article className="history-item" key={m.id}><div className={"history-letter result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div><div className="history-copy"><strong>{m.name_a} <i>×</i> {m.secret_mode?"Secret Crush":m.name_b}</strong><span>{RESULTS[m.result_key]?.name||"FLAMES"} · {m.percent}% · {relativeTime(m.created_at)}</span><p>{m.message}</p></div></article>)}</div>:<div className="large-empty"><Icon name="history" size={32}/><h3>No saved matches yet.</h3><p>Play a match and it will show up here.</p><button className="big-play-btn" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play now</button></div>}</section></div></main>;
+  return <main className="social-page">
+    <AppNav profile={profile} streak={streak} view="history" setView={setView}/>
+    <div className="content-page">
+      <div className="page-intro page-intro-row">
+        <div><span className="eyebrow">YOUR HISTORY</span><h1>Every match has a little story.</h1><p>Your saved FLAMES results, newest first.</p></div>
+        <button className="big-play-btn" type="button" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play another</button>
+      </div>
+      <div className="page-summary-row">
+        <div><span>SAVED MATCHES</span><strong>{recentMatches.length}</strong></div>
+        <div><span>CURRENT STREAK</span><strong>{streak||0}</strong></div>
+        <div><span>LATEST RESULT</span><strong>{recentMatches[0]?RESULTS[recentMatches[0].result_key]?.name||recentMatches[0].result_key:"—"}</strong></div>
+      </div>
+      <section className="large-card">
+        {recentMatches.length?<div className="history-grid">{recentMatches.map(m=><article className="history-item" key={m.id}>
+          <div className={"history-letter result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div>
+          <div className="history-copy"><strong>{m.name_a} <i>×</i> {m.secret_mode?"Secret Crush":m.name_b}</strong><span>{RESULTS[m.result_key]?.name||"FLAMES"} · {m.percent}% · {relativeTime(m.created_at)}</span><p>{m.message}</p></div>
+        </article>)}</div>:<div className="large-empty"><Icon name="history" size={32}/><h3>No saved matches yet.</h3><p>Classic FLAMES is ready whenever you are.</p><button className="big-play-btn" type="button" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play your first match</button></div>}
+      </section>
+    </div>
+  </main>;
 }
 
 function AchievementsPage({profile,streak,recentMatches,savedCount,setView}){
- const counts=resultCounts(recentMatches);
- const items=[
-   {icon:"play",title:"First Flame",desc:"Complete your first saved match.",done:savedCount>=1,progress:Math.min(savedCount,1)},
-   {icon:"bolt",title:"Three days hot",desc:"Keep a 3-day FLAMES streak.",done:streak>=3,progress:Math.min(streak,3)},
-   {icon:"trophy",title:"FLAMES Regular",desc:"Save five matches.",done:savedCount>=5,progress:Math.min(savedCount,5)},
-   {icon:"crown",title:"Known around FLAMES",desc:"Save ten matches.",done:savedCount>=10,progress:Math.min(savedCount,10)}
- ];
- const firstResult=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0];
- return <main className="social-page"><AppNav profile={profile} streak={streak} view="achievements" setView={setView}/><div className="content-page"><div className="page-intro"><span className="eyebrow">ACHIEVEMENTS & RECORDS</span><h1>Make the little moments count.</h1><p>Real milestones from how you use FLAMES.</p></div><div className="records-grid"><section className="record-hero-card"><span>YOUR CURRENT RUN</span><strong>{streak}<small>days</small></strong><p>{streak?"Keep the flame going.":"Play today to light it up."}</p></section><section className="record-hero-card warm-record"><span>SAVED MOMENTS</span><strong>{savedCount}</strong><p>{firstResult?"Your most common result is "+RESULTS[firstResult].name+".":"Your record begins with your first saved match."}</p></section><section className="record-hero-card purple-record"><span>FLAMES PERSONALITY</span><strong>{firstResult?RESULTS[firstResult].emoji:"✦"}</strong><p>{firstResult?RESULTS[firstResult].name+" energy keeps showing up.":"Let the history reveal it."}</p></section></div><section className="large-card achievement-list">{items.map(a=><div className={"achievement-row "+(a.done?"complete":"")} key={a.title}><div className="achievement-badge"><Icon name={a.icon} size={21}/></div><div><h3>{a.title}</h3><p>{a.desc}</p></div><div className="achievement-progress"><span>{a.done?"Unlocked":a.progress+"/ "+(a.title==="Three days hot"?3:a.title==="First Flame"?1:a.title.includes("Regular")?5:10)}</span><div><i style={{width:((a.done?1:a.progress/(a.title==="Three days hot"?3:a.title==="First Flame"?1:a.title.includes("Regular")?5:10))*100)+"%"}}/></div></div>{a.done&&<Icon name="check" size={19}/>}</div>)}</section></div></main>;
+  const counts=resultCounts(recentMatches);
+  const firstResult=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const items=[
+    {icon:"play",title:"First Flame",desc:"Complete your first saved match.",done:savedCount>=1,progress:Math.min(savedCount,1),goal:1},
+    {icon:"bolt",title:"Three days hot",desc:"Keep a 3-day FLAMES streak.",done:streak>=3,progress:Math.min(streak,3),goal:3},
+    {icon:"trophy",title:"FLAMES Regular",desc:"Save five matches.",done:savedCount>=5,progress:Math.min(savedCount,5),goal:5},
+    {icon:"crown",title:"Known around FLAMES",desc:"Save ten matches.",done:savedCount>=10,progress:Math.min(savedCount,10),goal:10}
+  ];
+  return <main className="social-page">
+    <AppNav profile={profile} streak={streak} view="achievements" setView={setView}/>
+    <div className="content-page">
+      <div className="page-intro page-intro-row"><div><span className="eyebrow">ACHIEVEMENTS & RECORDS</span><h1>Keep the little wins.</h1><p>Everything here comes from your own FLAMES activity.</p></div><button className="big-play-btn" type="button" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play</button></div>
+      <div className="records-grid">
+        <section className="record-hero-card"><span>CURRENT RUN</span><strong>{streak||0}<small>days</small></strong><p>{streak?"Keep the fire going.":"Start your streak today."}</p></section>
+        <section className="record-hero-card warm-record"><span>SAVED MOMENTS</span><strong>{savedCount}</strong><p>{savedCount?"Your history is growing.":"Save your first result."}</p></section>
+        <section className="record-hero-card purple-record"><span>YOUR MOST COMMON</span><strong>{firstResult?RESULTS[firstResult].emoji:"✦"}</strong><p>{firstResult?RESULTS[firstResult].name+" · "+counts[firstResult]+" saved":"Your pattern will appear here."}</p></section>
+      </div>
+      <section className="large-card achievement-list">{items.map(a=><div className={"achievement-row "+(a.done?"complete":"")} key={a.title}>
+        <div className="achievement-badge"><Icon name={a.icon} size={21}/></div><div><h3>{a.title}</h3><p>{a.desc}</p></div>
+        <div className="achievement-progress"><span>{a.done?"Unlocked":a.progress+"/"+a.goal}</span><div><i style={{width:Math.min((a.progress/a.goal)*100,100)+"%"}}/></div></div>{a.done&&<Icon name="check" size={19}/>}
+      </div>)}</section>
+      <section className="large-card result-breakdown"><div className="section-head"><div><span>YOUR FLAMES BREAKDOWN</span><h2>What keeps showing up</h2></div></div>{LETTERS.map(k=><div className="result-bar-row" key={k}><b>{k}</b><span>{RESULTS[k].emoji}</span><strong>{RESULTS[k].name}</strong><div><i style={{width:(Math.min(((counts[k]||0)/Math.max(1,recentMatches.length))*100,100))+"%"}}/></div><small>{counts[k]||0}</small></div>)}</section>
+    </div>
+  </main>;
 }
 
 function ProfilePage({profile,streak,savedCount,recentMatches,setView,onLogout}){
- return <main className="social-page"><AppNav profile={profile} streak={streak} view="profile" setView={setView}/><div className="content-page profile-page-content"><section className="profile-hero"><div className="profile-hero-top"><Avatar profile={profile} size="xl"/><div><span className="eyebrow">YOUR FLAMES PROFILE</span><h1>{profile?.display_name||"FLAMES Friend"}</h1><p>@{profile?.username||"flames"}</p></div><button onClick={()=>setView("settings")}><Icon name="settings" size={18}/> Settings</button></div><div className="profile-stats"><div><b>{savedCount}</b><span>saved matches</span></div><div><b>{streak}</b><span>day streak</span></div><div><b>{recentMatches.length?RESULTS[recentMatches[0].result_key]?.name:"—"}</b><span>latest result</span></div></div></section><section className="large-card profile-note"><Icon name="spark" size={22}/><div><h3>Keep it playful.</h3><p>Your FLAMES identity is yours, your results stay private to your account, and every number here comes from your own play.</p></div></section></div></main>;
+  return <main className="social-page">
+    <AppNav profile={profile} streak={streak} view="profile" setView={setView} onLogout={onLogout}/>
+    <div className="content-page profile-page-content">
+      <section className="profile-hero">
+        <div className="profile-hero-top"><Avatar profile={profile} size="xl"/><div><span className="eyebrow">YOUR FLAMES PROFILE</span><h1>{profile?.display_name||"FLAMES Friend"}</h1><p>@{profile?.username||"flames"}</p></div><button type="button" onClick={()=>setView("settings")}><Icon name="settings" size={18}/> Settings</button></div>
+        <div className="profile-stats"><div><b>{savedCount}</b><span>saved matches</span></div><div><b>{streak||0}</b><span>day streak</span></div><div><b>{recentMatches.length?RESULTS[recentMatches[0].result_key]?.name||"FLAMES":"—"}</b><span>latest result</span></div></div>
+      </section>
+      <div className="profile-grid">
+        <section className="large-card profile-note"><span className="eyebrow">ABOUT YOUR SPACE</span><h2>Your FLAMES identity.</h2><p>Your @username and automatic avatar travel with your account. Your saved matches stay attached to the same FLAMES profile.</p><div className="profile-action-row"><button type="button" onClick={()=>setView("game")}><Icon name="play" size={17}/> Play FLAMES</button><button type="button" onClick={()=>setView("circle")}><Icon name="users" size={17}/> Private Circle</button></div></section>
+        <section className="large-card"><div className="section-head"><div><span>RECENT</span><h2>Your latest match</h2></div></div>{recentMatches[0]?<div className="profile-latest"><div className={"history-letter result-"+String(recentMatches[0].result_key||"").toLowerCase()}>{recentMatches[0].result_key}</div><div><strong>{recentMatches[0].name_a} <i>×</i> {recentMatches[0].secret_mode?"Secret Crush":recentMatches[0].name_b}</strong><span>{RESULTS[recentMatches[0].result_key]?.name||"FLAMES"} · {recentMatches[0].percent}%</span><small>{relativeTime(recentMatches[0].created_at)}</small></div></div>:<div className="pending-empty">No matches yet. Your first one can start now.</div>}<button className="text-link profile-history-link" type="button" onClick={()=>setView("history")}>Open full history <Icon name="arrow" size={15}/></button></section>
+      </div>
+    </div>
+  </main>;
 }
 
 function SettingsPage({profile,streak,setView,onLogout}){
- return <main className="social-page"><AppNav profile={profile} streak={streak} view="settings" setView={setView}/><div className="content-page"><div className="page-intro"><span className="eyebrow">SETTINGS</span><h1>Your space, your rules.</h1><p>Simple account controls. Nothing noisy.</p></div><section className="large-card settings-list"><button onClick={()=>setView("profile")}><Icon name="user"/><div><strong>Profile</strong><span>View your FLAMES identity and stats.</span></div><Icon name="arrow" size={18}/></button><button onClick={()=>setView("circle")}><Icon name="users"/><div><strong>Private Circle</strong><span>Manage people you have connected with.</span></div><Icon name="arrow" size={18}/></button><button className="danger" onClick={onLogout}><Icon name="lock"/><div><strong>Log out</strong><span>End this session on this device.</span></div><Icon name="arrow" size={18}/></button></section></div></main>;
+  return <main className="social-page">
+    <AppNav profile={profile} streak={streak} view="settings" setView={setView} onLogout={onLogout}/>
+    <div className="content-page">
+      <div className="page-intro"><span className="eyebrow">SETTINGS</span><h1>Your space, your rules.</h1><p>Account navigation without the clutter.</p></div>
+      <section className="settings-account">
+        <Avatar profile={profile} size="lg"/><div><span className="eyebrow">SIGNED IN AS</span><h2>{profile?.display_name||"FLAMES Friend"}</h2><p>@{profile?.username||"flames"} · {streak||0} day streak</p></div>
+      </section>
+      <section className="large-card settings-list">
+        <button type="button" onClick={()=>setView("profile")}><Icon name="user"/><div><strong>Profile</strong><span>View your FLAMES identity and activity.</span></div><Icon name="arrow" size={18}/></button>
+        <button type="button" onClick={()=>setView("circle")}><Icon name="users"/><div><strong>Private Circle</strong><span>Manage your Circle connections and requests.</span></div><Icon name="arrow" size={18}/></button>
+        <button type="button" onClick={()=>setView("history")}><Icon name="history"/><div><strong>Saved matches</strong><span>Open the results you have kept.</span></div><Icon name="arrow" size={18}/></button>
+        <button type="button" onClick={()=>setView("achievements")}><Icon name="trophy"/><div><strong>Achievements</strong><span>View streaks, milestones and your FLAMES pattern.</span></div><Icon name="arrow" size={18}/></button>
+        <button type="button" className="danger" onClick={onLogout}><Icon name="lock"/><div><strong>Log out</strong><span>End this FLAMES session on this device.</span></div><Icon name="arrow" size={18}/></button>
+      </section>
+      <section className="settings-note"><Icon name="spark" size={19}/><p>FLAMES stays a game first. Your account simply keeps the things worth keeping.</p></section>
+    </div>
+  </main>;
 }
 
 function CirclePage({profile,streak,user,setView}){
@@ -259,7 +335,7 @@ function CirclePage({profile,streak,user,setView}){
  return <main className="social-page"><AppNav profile={profile} streak={streak} view="circle" setView={setView}/><div className="content-page"><div className="page-intro circle-intro"><span className="eyebrow">PRIVATE CIRCLE</span><h1>Your people, kept close.</h1><p>Connect with FLAMES people you trust. Circle connections are only visible to the people in them.</p></div><section className="circle-search-card"><form onSubmit={findPeople}><div><Icon name="users" size={20}/><input value={query} onChange={e=>setQuery(e.target.value.replace(/[^a-z0-9_]/gi,"").slice(0,20))} placeholder="Find someone by @username"/></div><button className="big-play-btn">{searching?"Searching…":"Find them"}</button></form>{notice&&<p className="circle-notice">{notice}</p>}{results.length>0&&<div className="circle-results">{results.map(p=><div className="person-result" key={p.id}><Avatar profile={p} size="md"/><div><strong>{p.display_name}</strong><span>@{p.username}</span></div><button onClick={()=>send(p)} disabled={busy===p.id}><Icon name="plus" size={16}/>{busy===p.id?"Sending":"Add to Circle"}</button></div>)}</div>}</section><div className="circle-columns"><section className="large-card"><div className="section-head"><div><span>YOUR CIRCLE</span><h2>The people you keep close</h2></div><span className="count-pill">{accepted.length}</span></div>{accepted.length?<div className="circle-people">{accepted.map(c=>{const id=c.requester_id===user.id?c.addressee_id:c.requester_id;const p=profiles[id];return <div className="circle-person" key={c.id}><Avatar profile={p} size="md"/><div><strong>{p?.display_name||"FLAMES Friend"}</strong><span>@{p?.username||"flames"}</span></div><Icon name="check" size={17}/></div>})}</div>:<div className="large-empty"><Icon name="users" size={30}/><h3>Your Circle is empty.</h3><p>Find someone by username and send the first connection.</p></div>}</section><section className="large-card pending-card"><div className="section-head"><div><span>REQUESTS</span><h2>Waiting for you</h2></div><span className="count-pill">{incoming.length}</span></div>{incoming.length?incoming.map(c=>{const p=profiles[c.requester_id];return <div className="request-row" key={c.id}><Avatar profile={p} size="sm"/><div><strong>{p?.display_name||"FLAMES Friend"}</strong><span>@{p?.username||"flames"}</span></div><div className="request-actions"><button onClick={()=>respond(c,"accepted")} disabled={busy===c.id}>Accept</button><button onClick={()=>respond(c,"rejected")} disabled={busy===c.id}>Pass</button></div></div>}):<div className="pending-empty">No requests waiting.</div>}{outgoing.length>0&&<div className="outgoing-note">{outgoing.length} outgoing request{outgoing.length>1?"s":""} waiting.</div>}</section></div></div></main>;
 }
 
-function PublicGame({initialView="dashboard"}){
+function PublicGame({initialView="dashboard",appMode=false,appNavigate=null}){
   const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[recentMatches,setRecentMatches]=useState([]),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[view,setView]=useState(initialView),[authReady,setAuthReady]=useState(false),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
   const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(100)]);let account=p||null;if(account&&(!Number.isInteger(account.avatar_id)||account.avatar_id<1||account.avatar_id>24)){const avatarId=(Array.from(u.id).reduce((n,ch)=>n+ch.charCodeAt(0),0)%24)+1;const {data:updated}=await supabase.from("flames_profiles").update({avatar_id:avatarId,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();account=updated||account}setProfile(account);setRecentMatches(m||[]);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
   useEffect(()=>{let active=true;(async()=>{const {data}=await supabase.auth.getUser();if(!active)return;const u=data?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setRecentMatches([]);setSavedCount(0);setStreak(0)}if(active)setAuthReady(true)})();const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{if(!active)return;const u=session?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setRecentMatches([]);setSavedCount(0);setStreak(0)}setAuthReady(true)});return()=>{active=false;sub.subscription.unsubscribe()}},[]);
@@ -326,8 +402,8 @@ function PublicGame({initialView="dashboard"}){
   const sendFeedback=async()=>{if(feedbackSending||(!feedbackRating&&!feedbackMessage.trim()))return;setFeedbackSending(true);const ok=await submitFeedback({rating:feedbackRating||null,category:feedbackCategory||null,message:feedbackMessage.trim()||null,path:location.pathname});setFeedbackSending(false);if(ok){setFeedbackSent(true);setFeedbackMessage("");setFeedbackRating("");setFeedbackCategory("");window.setTimeout(()=>{setFeedbackSent(false);setFeedbackOpen(false)},1400)}};
   const dismissMiniPromo=()=>{setMiniPromo(false);try{localStorage.setItem("flames_mini_promo_dismissed","1")}catch{}};
   return <main className={"app "+(secretMode?"secret-mode":"")}><div className="glow g1"/><div className="glow g2"/>
-    <header className="main-navbar"><button className="brand" onClick={()=>{if(location.pathname.startsWith("/app")){window.history.pushState({}, "", "/app");window.dispatchEvent(new PopStateEvent("popstate"));}else reset()}} aria-label="Back to FLAMES home"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span className="brand-word">FLAMES</span></button><div className="header-right">{user&&location.pathname.startsWith("/app")?<><button className="header-link-button" onClick={()=>{window.history.pushState({}, "", "/app/history");window.dispatchEvent(new PopStateEvent("popstate"))}}>History</button><button className="header-link-button" onClick={()=>{window.history.pushState({}, "", "/app/circle");window.dispatchEvent(new PopStateEvent("popstate"))}}>Private Circle</button><button className="header-link-button" onClick={()=>{window.history.pushState({}, "", "/app/profile");window.dispatchEvent(new PopStateEvent("popstate"))}}>Profile</button><button className="header-logout" onClick={handleLogout}>Log out</button></>:<><div className="fun"><i/> Just for fun</div>{user?<button className="header-logout" onClick={handleLogout}>Log out</button>:<div className="header-auth"><a className="header-link-button" href="/login">Log in</a><a className="header-link-button header-signup" href="/register">Create account</a></div>}</>}</div></header>
-    {user&&<div className="account-strip"><div className="account-live"><span className="account-dot"></span><b>@{profile?.username||"flames"}</b><small>connected</small></div><div className="account-stats"><span>🔥 {streak} day streak</span><span>✦ {savedCount} saved {savedCount===1?"match":"matches"}</span></div><button onClick={handleLogout}>Log out</button></div>}
+    {appMode?<AppNav profile={profile} streak={streak} view="game" setView={appNavigate||setView} onLogout={handleLogout}/>:<header className="main-navbar"><button className="brand" onClick={reset} aria-label="Back to FLAMES home"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span className="brand-word">FLAMES</span></button><div className="header-right"><div className="fun"><i/> Just for fun</div>{user?<button className="header-logout" onClick={handleLogout}>Log out</button>:<div className="header-auth"><a className="header-link-button" href="/login">Log in</a><a className="header-link-button header-signup" href="/register">Create account</a></div>}</div></header>}
+    {user&&!appMode&&<div className="account-strip"><div className="account-live"><span className="account-dot"></span><b>@{profile?.username||"flames"}</b><small>connected</small></div><div className="account-stats"><span>🔥 {streak} day streak</span><span>✦ {savedCount} saved {savedCount===1?"match":"matches"}</span></div><button onClick={handleLogout}>Log out</button></div>}
     <section className="shell">
       {!key&&!loading&&<><div className="mode-switch"><button type="button" className={!secretMode?"active":""} onClick={()=>setSecretMode(false)}>Classic FLAMES</button><button type="button" className={secretMode?"active":""} onClick={()=>setSecretMode(true)}>💘 Secret Crush</button></div>
         <div className="hero"><small>{secretMode?"02 · KEEP IT SECRET":"01 · NAME CHEMISTRY"}</small><h1>{secretMode?<>Your crush.<br/><em>Your secret.</em> Your result.</>:<>Two names.<br/><em>One unexpected</em> connection.</>}</h1><p>{secretMode?"Enter the name of the person on your mind. Their name stays hidden on the result.":"Bring two names together and let the classic FLAMES game reveal what kind of connection they have."}</p></div>
@@ -432,7 +508,7 @@ function AuthenticatedRouter({path,navigate}){
   const nav=(next)=>{const target=next==="dashboard"?"/app":next==="game"?"/app/play":"/app/"+next;window.history.pushState({}, "", target);window.dispatchEvent(new PopStateEvent("popstate"))};
 
   if(authState!=="authenticated")return <main className="dashboard-boot"><div className="dashboard-brand-mark"><Flame/></div><span>Loading your FLAMES space…</span></main>;
-  if(path==="/app/play")return <PublicGame initialView="game"/>;
+  if(path==="/app/play")return <PublicGame initialView="game" appMode appNavigate={nav}/>;
   if(path==="/app/history")return <HistoryPage profile={profile} streak={streak} recentMatches={recentMatches} setView={nav}/>;
   if(path==="/app/achievements")return <AchievementsPage profile={profile} streak={streak} recentMatches={recentMatches} savedCount={savedCount} setView={nav}/>;
   if(path==="/app/profile")return <ProfilePage profile={profile} streak={streak} savedCount={savedCount} recentMatches={recentMatches} setView={nav} onLogout={logout}/>;
