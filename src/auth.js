@@ -1,5 +1,8 @@
 import { supabase } from "./supabase.js";
 
+const SUPABASE_URL = "https://lbkhadjmkwtrbzwkuhyn.supabase.co";
+const SUPABASE_KEY = "sb_publishable_NQ17m1yFOZf-6Yg69U3kWQ_yOzFgKkK";
+
 export async function getSessionUser(){
   const {data}=await supabase.auth.getUser();
   return data?.user||null;
