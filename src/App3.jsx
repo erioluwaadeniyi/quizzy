@@ -105,13 +105,13 @@ function AuthPage({type}){
       return;
     }
     if(isLogin){
-      window.location.href="/";
+      window.location.href="/app";
       return;
     }
     setDone(true);
   };
 
-  if(done)return <main className="auth-page flames-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="auth-page-card success-page"><div className="page-flame"><Flame/></div><small className="auth-kicker">ACCOUNT READY</small><h1>You're in.</h1><p>Your FLAMES account is connected. Your next matches can stay with you.</p><div className="page-benefits"><span>🔥 Save matches</span><span>⚡ Build your streak</span><span>✨ Keep your @identity</span></div><a className="auth-page-primary" href="/">Start playing ↗</a></section></main>;
+  if(done)return <main className="auth-page flames-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="auth-page-card success-page"><div className="page-flame"><Flame/></div><small className="auth-kicker">ACCOUNT READY</small><h1>You're in.</h1><p>Your FLAMES account is connected. Your next matches can stay with you.</p><div className="page-benefits"><span>🔥 Save matches</span><span>⚡ Build your streak</span><span>✨ Keep your @identity</span></div><a className="auth-page-primary" href="/app">Open your FLAMES ↗</a></section></main>;
 
   return <main className="auth-page flames-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="auth-page-card"><div className="page-flame"><Flame/></div><small className="auth-kicker">{isLogin?"WELCOME BACK":"JOIN FLAMES"}</small><h1>{isLogin?"Welcome back.":"Keep your FLAMES."}</h1><p>{isLogin?"Log in and get back to the game.":"Create an account to save your matches, keep your streak and have your own FLAMES identity."}</p>{!isLogin&&<div className="page-unlocks"><span>🔥 Save every result</span><span>⚡ Keep your streak</span><span>✨ Unique @username</span></div>}{!isLogin&&<label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/><small>Full names can be identical.</small></label>}{!isLogin&&<label>FLAMES username<div className="username-field"><span className="username-prefix">@</span><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/></div>{usernameMessage&&<small className={"field-status "+usernameState}>{usernameMessage}</small>}</label>}<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label><label><div className="password-label-row"><span>Password</span>{isLogin&&<a href="/forgot-password">Forgot password?</a>}</div><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={isLogin?"Enter your password":"Create a password (6+ characters)"} autoComplete={isLogin?"current-password":"new-password"}/></label>{error&&<div className="auth-error">{error}</div>}<button className="auth-page-primary" disabled={busy||!email||password.length<6||(!isLogin&&usernameState!=="success")} onClick={submit}>{busy?"Please wait…":isLogin?"Log in":"Create account"}</button><a className="auth-page-switch" href={isLogin?"/register":"/login"}>{isLogin?"New to FLAMES? Create an account":"Already have an account? Log in"}</a></section></main>
 }
@@ -292,13 +292,8 @@ function CirclePage({profile,streak,user,setView}){
  return <main className="social-page"><AppNav profile={profile} streak={streak} view="circle" setView={setView}/><div className="content-page"><div className="page-intro circle-intro"><span className="eyebrow">PRIVATE CIRCLE</span><h1>Your people, kept close.</h1><p>Connect with FLAMES people you trust. Circle connections are only visible to the people in them.</p></div><section className="circle-search-card"><form onSubmit={findPeople}><div><Icon name="users" size={20}/><input value={query} onChange={e=>setQuery(e.target.value.replace(/[^a-z0-9_]/gi,"").slice(0,20))} placeholder="Find someone by @username"/></div><button className="big-play-btn">{searching?"Searching…":"Find them"}</button></form>{notice&&<p className="circle-notice">{notice}</p>}{results.length>0&&<div className="circle-results">{results.map(p=><div className="person-result" key={p.id}><Avatar profile={p} size="md"/><div><strong>{p.display_name}</strong><span>@{p.username}</span></div><button onClick={()=>send(p)} disabled={busy===p.id}><Icon name="plus" size={16}/>{busy===p.id?"Sending":"Add to Circle"}</button></div>)}</div>}</section><div className="circle-columns"><section className="large-card"><div className="section-head"><div><span>YOUR CIRCLE</span><h2>The people you keep close</h2></div><span className="count-pill">{accepted.length}</span></div>{accepted.length?<div className="circle-people">{accepted.map(c=>{const id=c.requester_id===user.id?c.addressee_id:c.requester_id;const p=profiles[id];return <div className="circle-person" key={c.id}><Avatar profile={p} size="md"/><div><strong>{p?.display_name||"FLAMES Friend"}</strong><span>@{p?.username||"flames"}</span></div><Icon name="check" size={17}/></div>})}</div>:<div className="large-empty"><Icon name="users" size={30}/><h3>Your Circle is empty.</h3><p>Find someone by username and send the first connection.</p></div>}</section><section className="large-card pending-card"><div className="section-head"><div><span>REQUESTS</span><h2>Waiting for you</h2></div><span className="count-pill">{incoming.length}</span></div>{incoming.length?incoming.map(c=>{const p=profiles[c.requester_id];return <div className="request-row" key={c.id}><Avatar profile={p} size="sm"/><div><strong>{p?.display_name||"FLAMES Friend"}</strong><span>@{p?.username||"flames"}</span></div><div className="request-actions"><button onClick={()=>respond(c,"accepted")} disabled={busy===c.id}>Accept</button><button onClick={()=>respond(c,"rejected")} disabled={busy===c.id}>Pass</button></div></div>}):<div className="pending-empty">No requests waiting.</div>}{outgoing.length>0&&<div className="outgoing-note">{outgoing.length} outgoing request{outgoing.length>1?"s":""} waiting.</div>}</section></div></div></main>;
 }
 
-export default function App(){
-  const authPath=location.pathname.replace(/\/$/,"");
-  if(authPath==="/login") return <AuthPage type="login"/>;
-  if(authPath==="/register") return <AuthPage type="register"/>;
-  if(authPath==="/forgot-password") return <ForgotPasswordPage/>;
-  if(authPath==="/reset-password") return <ResetPasswordPage/>;
-  const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[recentMatches,setRecentMatches]=useState([]),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[view,setView]=useState("dashboard"),[authReady,setAuthReady]=useState(false),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
+function PublicGame({initialView="dashboard"}){
+  const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[recentMatches,setRecentMatches]=useState([]),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[view,setView]=useState(initialView),[authReady,setAuthReady]=useState(false),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
   const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(100)]);let account=p||null;if(account&&(!Number.isInteger(account.avatar_id)||account.avatar_id<1||account.avatar_id>24)){const avatarId=(Array.from(u.id).reduce((n,ch)=>n+ch.charCodeAt(0),0)%24)+1;const {data:updated}=await supabase.from("flames_profiles").update({avatar_id:avatarId,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();account=updated||account}setProfile(account);setRecentMatches(m||[]);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
   useEffect(()=>{let active=true;(async()=>{const {data}=await supabase.auth.getUser();if(!active)return;const u=data?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setRecentMatches([]);setSavedCount(0);setStreak(0)}if(active)setAuthReady(true)})();const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{if(!active)return;const u=session?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setRecentMatches([]);setSavedCount(0);setStreak(0)}setAuthReady(true)});return()=>{active=false;sub.subscription.unsubscribe()}},[]);
   const openAuth=mode=>{setAuthMode(mode);setAuthSuccess(false);setAuthOpen(true)};
@@ -409,4 +404,107 @@ export default function App(){
     {miniPromo&&<aside className="mini-promo"><button className="mini-close" aria-label="Dismiss MINI BOX promotion" onClick={dismissMiniPromo}>×</button><div className="mini-promo-kicker">ANOTHER LITTLE THING</div><strong>Try MINI BOX</strong><p>Ask questions anonymously and get real human answers.</p><a href="https://minibox-app.vercel.app/" target="_blank" rel="noreferrer">Try MINI BOX ↗</a></aside>}
     {feedbackOpen&&<div className="feedback-backdrop" role="dialog" aria-modal="true" aria-label="FLAMES feedback"><div className="feedback-modal"><button className="feedback-close" onClick={()=>setFeedbackOpen(false)} aria-label="Close feedback">×</button>{feedbackSent?<div className="feedback-success"><div>✓</div><h3>Thanks for the feedback.</h3><p>It helps us improve FLAMES.</p></div>:<><small>OPTIONAL FEEDBACK</small><h3>How's FLAMES?</h3><p className="feedback-sub">Tell us what you think. You can close this without sending anything.</p><div className="feedback-ratings">{[["love_it","😍","Love it"],["good","🙂","Good"],["okay","😐","Okay"],["needs_work","😕","Needs work"]].map(([v,e,t])=><button key={v} type="button" className={feedbackRating===v?"selected":""} onClick={()=>setFeedbackRating(v)}><span>{e}</span>{t}</button>)}</div><div className="feedback-field"><label>Anything we should improve? <em>Optional</em></label><textarea value={feedbackMessage} onChange={e=>setFeedbackMessage(e.target.value)} maxLength={1000} placeholder="Tell us what you think..."/></div><div className="feedback-field"><label>Category <em>Optional</em></label><div className="feedback-cats">{[["bug","Bug"],["idea","Idea"],["ui","UI"],["game","Game"],["other","Other"]].map(([v,t])=><button key={v} type="button" className={feedbackCategory===v?"selected":""} onClick={()=>setFeedbackCategory(v)}>{t}</button>)}</div></div><button className="feedback-submit" disabled={feedbackSending||(!feedbackRating&&!feedbackMessage.trim())} onClick={sendFeedback}>{feedbackSending?"Sending...":"Send feedback"}</button></>}</div></div>}
   </main>;
+}
+
+function AppNavigate({children,path}){ return <button type="button" onClick={()=>{window.history.pushState({}, "", path);window.dispatchEvent(new PopStateEvent("popstate"));}}>{children}</button>; }
+
+function AuthenticatedRouter({path,navigate}){
+  const [authState,setAuthState]=useState("checking");
+  const [user,setUser]=useState(null);
+  const [profile,setProfile]=useState(null);
+  const [recentMatches,setRecentMatches]=useState([]);
+  const [savedCount,setSavedCount]=useState(0);
+  const [streak,setStreak]=useState(0);
+
+  const loadAccount=async(u)=>{
+    if(!u)return;
+    const [{data:p},{data:m}]=await Promise.all([
+      supabase.from("flames_profiles").select("*").eq("id",u.id).single(),
+      supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(100)
+    ]);
+    let account=p||null;
+    if(account&&(!Number.isInteger(account.avatar_id)||account.avatar_id<1||account.avatar_id>24)){
+      const avatarId=(Array.from(u.id).reduce((n,ch)=>n+ch.charCodeAt(0),0)%24)+1;
+      const {data:updated}=await supabase.from("flames_profiles").update({avatar_id:avatarId,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();
+      account=updated||account;
+    }
+    setProfile(account);
+    setRecentMatches(m||[]);
+    setSavedCount(m?.length||0);
+    if(account){
+      const today=new Date().toISOString().slice(0,10);
+      if(account.last_active_date!==today){
+        const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+        const next=account.last_active_date===yesterday?(account.streak_count||0)+1:1;
+        const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();
+        setStreak(updated?.streak_count||next);
+        setProfile(updated||account);
+      }else setStreak(account.streak_count||0);
+    }
+  };
+
+  useEffect(()=>{
+    let active=true;
+    (async()=>{
+      const {data}=await supabase.auth.getUser();
+      if(!active)return;
+      const u=data?.user||null;
+      if(!u){
+        setAuthState("unauthenticated");
+        window.location.replace("/login");
+        return;
+      }
+      setUser(u);
+      await loadAccount(u);
+      if(active)setAuthState("authenticated");
+    })();
+    return()=>{active=false};
+  },[]);
+
+  const logout=async()=>{await signOut();window.location.replace("/")};
+  const nav=(next)=>{const target=next==="dashboard"?"/app":next==="game"?"/app/play":"/app/"+next;window.history.pushState({}, "", target);window.dispatchEvent(new PopStateEvent("popstate"))};
+
+  if(authState!=="authenticated")return <main className="dashboard-boot"><div className="dashboard-brand-mark"><Flame/></div><span>Loading your FLAMES space…</span></main>;
+  if(path==="/app/play")return <PublicGame initialView="game"/>;
+  if(path==="/app/history")return <HistoryPage profile={profile} streak={streak} recentMatches={recentMatches} setView={nav}/>;
+  if(path==="/app/achievements")return <AchievementsPage profile={profile} streak={streak} recentMatches={recentMatches} savedCount={savedCount} setView={nav}/>;
+  if(path==="/app/profile")return <ProfilePage profile={profile} streak={streak} savedCount={savedCount} recentMatches={recentMatches} setView={nav} onLogout={logout}/>;
+  if(path==="/app/settings")return <SettingsPage profile={profile} streak={streak} setView={nav} onLogout={logout}/>;
+  if(path==="/app/circle")return <CirclePage profile={profile} streak={streak} user={user} setView={nav}/>;
+  return <Dashboard profile={profile} savedCount={savedCount} streak={streak} recentMatches={recentMatches} setView={nav}/>;
+}
+
+export default function App(){
+  const [path,setPath]=useState(()=>location.pathname.replace(/\/$/,"")||"/");
+  const [authReady,setAuthReady]=useState(false);
+  const [user,setUser]=useState(null);
+
+  useEffect(()=>{
+    let active=true;
+    const onPop=()=>setPath(location.pathname.replace(/\/$/,"")||"/");
+    window.addEventListener("popstate",onPop);
+    (async()=>{
+      const {data}=await supabase.auth.getUser();
+      if(!active)return;
+      setUser(data?.user||null);
+      setAuthReady(true);
+    })();
+    return()=>{active=false;window.removeEventListener("popstate",onPop)};
+  },[]);
+
+  useEffect(()=>{
+    if(!authReady)return;
+    const publicAuth=["/login","/register","/forgot-password","/reset-password"];
+    if(user&&path==="/"){window.history.replaceState({}, "", "/app");setPath("/app");return;}
+    if(user&&publicAuth.includes(path)){window.history.replaceState({}, "", "/app");setPath("/app");}
+    if(!user&&path.startsWith("/app")){window.history.replaceState({}, "", "/login");setPath("/login");}
+  },[authReady,user,path]);
+
+  if(path==="/login")return <AuthPage type="login"/>;
+  if(path==="/register")return <AuthPage type="register"/>;
+  if(path==="/forgot-password")return <ForgotPasswordPage/>;
+  if(path==="/reset-password")return <ResetPasswordPage/>;
+  if(!authReady)return <main className="dashboard-boot"><div className="dashboard-brand-mark"><Flame/></div><span>Opening FLAMES…</span></main>;
+  if(path.startsWith("/app"))return <AuthenticatedRouter path={path}/>;
+  return <PublicGame initialView="dashboard"/>;
 }
