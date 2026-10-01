@@ -149,3 +149,19 @@
 .final-invite-inner h2{font:600 26px "Space Grotesk";letter-spacing:-.03em;margin:7px 0 5px}.final-invite-inner p{margin:0;color:#bfb3aa;font-size:11px;line-height:1.5}
 .final-invite-inner>button{border:0;border-radius:12px;background:#ffb42d;color:#1c1511;padding:12px 15px;font-size:10px;font-weight:900;cursor:pointer}
 @media(max-width:680px){.flames-info-section{width:calc(100% - 28px);margin-top:68px}.meaning-grid{grid-template-columns:repeat(2,1fr)}.meaning-card{min-height:96px;padding:14px}.meaning-card>b{width:39px;height:39px}.final-invite-inner{grid-template-columns:auto 1fr;padding:24px}.final-invite-inner>button{grid-column:2;width:100%}.how-item{grid-template-columns:45px 1fr}}
+
+
+/* Connected FLAMES account experience */
+.signup-unlock{margin:15px 0 18px;padding:13px;border:1px solid #eadfd4;border-radius:16px;background:#fff7ee}
+.signup-unlock>small{font-size:8px;letter-spacing:.14em;font-weight:900;color:#d95832}
+.unlock-row{display:flex;gap:9px;align-items:flex-start;margin-top:11px}
+.unlock-row>span{font-size:15px;line-height:1.1}.unlock-row strong{display:block;font:700 10px "Space Grotesk";color:#2c241f}.unlock-row em{display:block;font-style:normal;font-size:8px;line-height:1.4;color:#8a7d73;margin-top:2px}
+.account-strip{width:min(920px,calc(100% - 40px));margin:-2px auto 18px;padding:9px 12px;border:1px solid #e6dbd0;border-radius:14px;background:#fffaf5;display:flex;align-items:center;gap:14px;font-size:9px}
+.account-live{display:flex;align-items:center;gap:6px}.account-dot{width:7px;height:7px;border-radius:50%;background:#53a568;box-shadow:0 0 0 4px #53a56818}.account-live b{font-size:10px}.account-live small{color:#8d8177}.account-stats{display:flex;gap:13px;color:#756a61;flex:1}.account-strip>button{border:0;background:transparent;color:#a04832;font-size:8px;font-weight:800;cursor:pointer}
+.flames-auth-success{width:min(500px,calc(100vw - 30px));max-height:calc(100svh - 30px);overflow:auto;padding:34px;border-radius:30px;background:#fffaf5;text-align:center;box-shadow:0 30px 100px #24170f35;border:1px solid #e4d8cd}
+.success-orbit{width:104px;height:104px;border-radius:50%;margin:0 auto 20px;background:#17120f;position:relative;display:grid;place-items:center}
+.success-fire{width:54px;height:54px;border-radius:18px;background:#30251f;display:grid;place-items:center}.success-fire .flame{width:29px;height:34px}.success-fire .flame path:first-child{fill:#ffb42d}.success-fire .flame .inner{fill:#fff4dc}
+.success-orbit>span{position:absolute;color:#d9c8b9;font:900 9px "Space Grotesk"}.success-orbit>span:nth-child(1){top:7px}.success-orbit>span:nth-child(2){right:20px;top:18px}.success-orbit>span:nth-child(3){right:8px;bottom:27px}.success-orbit>span:nth-child(4){bottom:8px;left:47px}.success-orbit>span:nth-child(5){left:8px;bottom:27px}.success-orbit>span:nth-child(6){left:20px;top:18px}
+.flames-auth-success h2{font:600 32px/1 "Space Grotesk";letter-spacing:-.05em;margin:9px 0}.flames-auth-success>p{color:#796e64;font-size:11px;line-height:1.6;margin:0 auto 20px;max-width:370px}
+.unlock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:left;margin-bottom:20px}.unlock-grid>div{padding:13px;border:1px solid #e9ded3;border-radius:15px;background:#fff}.unlock-grid b{font-size:14px}.unlock-grid strong{display:block;font:700 9px "Space Grotesk";margin-top:7px}.unlock-grid span{display:block;font-size:7px;line-height:1.4;color:#8c8077;margin-top:3px}
+@media(max-width:680px){.account-strip{width:calc(100% - 28px);flex-wrap:wrap;gap:8px}.account-stats{width:100%;order:3}.account-strip>button{margin-left:auto}.unlock-grid{grid-template-columns:1fr}.flames-auth-success{padding:25px}.signup-unlock{margin-top:12px}}
