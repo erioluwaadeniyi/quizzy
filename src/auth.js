@@ -20,8 +20,12 @@ export async function signOut(){
   return supabase.auth.signOut();
 }
 
-export async function requestPasswordReset({email,redirectTo}){
-  return supabase.auth.resetPasswordForEmail(email, {redirectTo});
+export async function requestPasswordReset({email}){
+  return supabase.auth.resetPasswordForEmail(email);
+}
+
+export async function verifyRecoveryCode({email,token}){
+  return supabase.auth.verifyOtp({email,token,type:"recovery"});
 }
 
 export async function updatePassword({password}){
