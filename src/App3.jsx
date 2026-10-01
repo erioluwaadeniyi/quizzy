@@ -126,7 +126,7 @@ function ForgotPasswordPage(){
   const [confirm,setConfirm]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
-  const [verified,setVerified]=useState(false);
+  const [verified,setVerified]=useState(false);\n  const [resetToken,setResetToken]=useState("");
   const [done,setDone]=useState(false);
 
   const sendCode=async e=>{
@@ -160,9 +160,9 @@ function ForgotPasswordPage(){
     setError("");
     if(password.length<6){setError("Password must be at least 6 characters.");return}
     if(password!==confirm){setError("Passwords do not match.");return}
-    if(!verified){setError("Verify your reset code first.");return}
+    if(!verified||!resetToken){setError("Verify your reset code first.");return}
     setBusy(true);
-    const result=await updatePassword({password});
+    const result=await updatePassword({email:email.trim().toLowerCase(),resetToken,password});
     if(result.error){
       setError(result.error.message||"Unable to update your password.");
       setBusy(false);
