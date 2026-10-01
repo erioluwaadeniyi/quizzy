@@ -65,7 +65,7 @@ function downloadResultCard(nameA,nameB,resultKey,percent,message,secret){
 }
 
 
-function AuthModal({mode,onClose,onAuthed}){
+function AuthModal({mode,onClose,onAuthed,success,successName}){
   const [kind,setKind]=useState(mode||"login");
   const [name,setName]=useState("");
   const [username,setUsername]=useState("");
@@ -101,31 +101,42 @@ function AuthModal({mode,onClose,onAuthed}){
       if(!/^\S+@\S+\.\S+$/.test(email.trim())){setError("Enter a valid email address.");return}
     }
     setBusy(true);
-    const r=kind==="login"
-      ?await signIn({email,password})
-      :await signUp({email,password,displayName:name.trim(),username:username.trim().toLowerCase()});
+    const r=kind==="login"?await signIn({email,password}):await signUp({email,password,displayName:name.trim(),username:username.trim().toLowerCase()});
     setBusy(false);
     if(r.error){setError(r.error.message||"Could not complete that request.");return}
-    if(kind==="signup"&&!r.data?.session){setError("Your account was created, but email confirmation is still enabled in Supabase. Disable Confirm email to enter immediately.");return}
+    if(kind==="signup"&&!r.data?.session){setError("Your account was created, but email confirmation is still enabled. Disable Confirm email in Supabase to enter immediately.");return}
     onAuthed(r.data?.user||null);
   };
+
+  if(success)return <div className="auth-backdrop"><div className="flames-auth-success">
+    <div className="success-orbit"><span>F</span><span>L</span><span>A</span><span>M</span><span>E</span><span>S</span><div className="success-fire"><Flame/></div></div>
+    <div className="auth-kicker">YOU'RE IN</div>
+    <h2>Welcome to your FLAMES.</h2>
+    <p>{successName||"Your account"} is now connected. Your future results can stay with you instead of disappearing after the game.</p>
+    <div className="unlock-grid">
+      <div><b>🔥</b><strong>Save results</strong><span>Your FLAMES matches stay attached to your account.</span></div>
+      <div><b>⚡</b><strong>Build a streak</strong><span>Keep playing and your FLAMES streak grows.</span></div>
+      <div><b>✨</b><strong>Keep your identity</strong><span>Your FLAMES username stays yours across sessions.</span></div>
+    </div>
+    <button className="auth-primary" onClick={onClose}>Keep playing</button>
+  </div></div>;
 
   return <div className="auth-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <div className="flames-auth-modal">
       <button className="auth-close" type="button" onClick={onClose}>×</button>
       <div className="auth-flame-mark"><Flame/></div>
       <div className="auth-kicker">{kind==="login"?"WELCOME BACK":"JOIN FLAMES"}</div>
-      <h2>{kind==="login"?"Log in to FLAMES":"Create your FLAMES account"}</h2>
-      <p>{kind==="login"?"Keep your account while the game stays free to play.":"Keep your FLAMES results connected to you."}</p>
+      <h2>{kind==="login"?"Come back to your FLAMES.":"Create your FLAMES account."}</h2>
+      <p>{kind==="login"?"Your game stays free. Your account keeps the things you build.":"One small account. More FLAMES to keep."}</p>
+      {kind==="signup"&&<div className="signup-unlock">
+        <small>UNLOCK WITH AN ACCOUNT</small>
+        <div className="unlock-row"><span>🔥</span><div><strong>Save every result</strong><em>Never lose a FLAMES match you want to remember.</em></div></div>
+        <div className="unlock-row"><span>⚡</span><div><strong>Keep your streak alive</strong><em>Your play builds a personal FLAMES streak.</em></div></div>
+        <div className="unlock-row"><span>✨</span><div><strong>Have your own FLAMES identity</strong><em>Your unique @username stays connected to your account.</em></div></div>
+      </div>}
       {kind==="signup"&&<>
-        <label>Full name
-          <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/>
-          <small className="auth-hint">Full names can be identical.</small>
-        </label>
-        <label>FLAMES username
-          <div className="username-field"><span className="username-prefix">@</span><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/></div>
-          {usernameMessage&&<small className={"field-status "+usernameState}>{usernameMessage}</small>}
-        </label>
+        <label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/><small className="auth-hint">Full names can be identical.</small></label>
+        <label>FLAMES username<div className="username-field"><span className="username-prefix">@</span><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/></div>{usernameMessage&&<small className={"field-status "+usernameState}>{usernameMessage}</small>}</label>
       </>}
       <label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label>
       <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={kind==="login"?"Enter your password":"Create a password (6+ characters)"} autoComplete={kind==="login"?"current-password":"new-password"}/></label>
@@ -137,12 +148,14 @@ function AuthModal({mode,onClose,onAuthed}){
 }
 
 export default function App(){
-  const [user,setUser]=useState(null),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
-  useEffect(()=>{supabase.auth.getUser().then(({data})=>setUser(data?.user||null));const {data:sub}=supabase.auth.onAuthStateChange((_,session)=>setUser(session?.user||null));return()=>sub.subscription.unsubscribe()},[]);
-  const openAuth=mode=>{setAuthMode(mode);setAuthOpen(true)};
-  const finishAuth=async()=>{setAuthOpen(false);const {data}=await supabase.auth.getUser();setUser(data?.user||null)};
-  const handleLogout=async()=>{await signOut();setUser(null)};
-  const saveMatch=async(k,message)=>{if(!user)return;await supabase.from("flames_matches").insert({user_id:user.id,name_a:a.trim(),name_b:b.trim(),result_key:k,percent:score(a,b),message,secret_mode:secretMode})};
+  const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
+  const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("id").eq("user_id",u.id).limit(100)]);setProfile(p||null);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
+  useEffect(()=>{supabase.auth.getUser().then(async({data})=>{if(data?.user){setUser(data.user);await loadAccount(data.user)}});const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{const u=session?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setSavedCount(0);setStreak(0)}});return()=>sub.subscription.unsubscribe()},[]);
+  const openAuth=mode=>{setAuthMode(mode);setAuthSuccess(false);setAuthOpen(true)};
+  const finishAuth=async()=>{const {data}=await supabase.auth.getUser();if(data?.user){setUser(data.user);await loadAccount(data.user);setAuthSuccessName(data.user.user_metadata?.display_name||"FLAMES Friend");setAuthSuccess(true)}};
+  const closeAuth=()=>{setAuthOpen(false);setAuthSuccess(false)};
+  const handleLogout=async()=>{await signOut();setUser(null);setProfile(null);setSavedCount(0);setStreak(0)};
+  const saveMatch=async(k,message)=>{if(!user)return;const {error}=await supabase.from("flames_matches").insert({user_id:user.id,name_a:a.trim(),name_b:b.trim(),result_key:k,percent:score(a,b),message,secret_mode:secretMode});if(!error)setSavedCount(v=>v+1)};
   const result=key?RESULTS[key]:null;
   const pct=useMemo(()=>key?score(a,b):0,[a,b,key]);
   const displayPair=secretMode?a.trim()+" × Secret Crush":a.trim()+" × "+b.trim();
@@ -195,10 +208,11 @@ export default function App(){
   const dismissMiniPromo=()=>{setMiniPromo(false);try{localStorage.setItem("flames_mini_promo_dismissed","1")}catch{}};
   return <main className={"app "+(secretMode?"secret-mode":"")}><div className="glow g1"/><div className="glow g2"/>
     <header className="main-navbar"><button className="brand" onClick={reset} aria-label="Back to FLAMES home"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span className="brand-word">FLAMES</span></button><div className="header-right"><div className="fun"><i/> Just for fun</div>{user?<button className="header-logout" onClick={handleLogout}>Log out</button>:<div className="header-auth"><button onClick={()=>openAuth("login")}>Log in</button><button className="header-signup" onClick={()=>openAuth("signup")}>Create account</button></div>}</div></header>
+    {user&&<div className="account-strip"><div className="account-live"><span className="account-dot"></span><b>@{profile?.username||"flames"}</b><small>connected</small></div><div className="account-stats"><span>🔥 {streak} day streak</span><span>✦ {savedCount} saved {savedCount===1?"match":"matches"}</span></div><button onClick={handleLogout}>Log out</button></div>
     <section className="shell">
       {!key&&!loading&&<><div className="mode-switch"><button type="button" className={!secretMode?"active":""} onClick={()=>setSecretMode(false)}>Classic FLAMES</button><button type="button" className={secretMode?"active":""} onClick={()=>setSecretMode(true)}>💘 Secret Crush</button></div>
         <div className="hero"><small>{secretMode?"02 · KEEP IT SECRET":"01 · NAME CHEMISTRY"}</small><h1>{secretMode?<>Your crush.<br/><em>Your secret.</em> Your result.</>:<>Two names.<br/><em>One unexpected</em> connection.</>}</h1><p>{secretMode?"Enter the name of the person on your mind. Their name stays hidden on the result.":"Bring two names together and let the classic FLAMES game reveal what kind of connection they have."}</p></div>
-        <form className="card" onSubmit={start}><div className="label">{secretMode?"SECRET CRUSH MATCH":"START A MATCH"}<b>✦</b></div><div className="fields"><label>Your name<input value={a} onChange={e=>setA(e.target.value)} placeholder="e.g. Alex" maxLength={30} autoComplete="off"/></label><strong>+</strong><label>{secretMode?"Your crush's name":"Their name"}<input value={b} onChange={e=>setB(e.target.value)} placeholder={secretMode?"keep it secret 👀":"e.g. Jamie"} maxLength={30} autoComplete="off"/></label></div><button className="match" disabled={!a.trim()||!b.trim()}><span>{secretMode?"Reveal secret result":"Discover your match"}</span><b>↗</b></button><p className="note">{secretMode?"Their name stays on this device and is not saved by FLAMES.":"No account. No data saved. Just a little fun."}</p></form>
+        <form className="card" onSubmit={start}><div className="label">{secretMode?"SECRET CRUSH MATCH":"START A MATCH"}<b>✦</b></div><div className="fields"><label>Your name<input value={a} onChange={e=>setA(e.target.value)} placeholder="e.g. Alex" maxLength={30} autoComplete="off"/></label><strong>+</strong><label>{secretMode?"Your crush's name":"Their name"}<input value={b} onChange={e=>setB(e.target.value)} placeholder={secretMode?"keep it secret 👀":"e.g. Jamie"} maxLength={30} autoComplete="off"/></label></div><button className="match" disabled={!a.trim()||!b.trim()}><span>{secretMode?"Reveal secret result":"Discover your match"}</span><b>↗</b></button><p className="note">{secretMode?"Their name stays on this device and is not saved by FLAMES.":(user?"Your result will be saved to your FLAMES account.":"No account needed. Just play.")}</p></form>
         <div className="letters">{LETTERS.map((letter,index)=><span style={{animationDelay:index*0.12+"s"}} key={letter}>{letter}</span>)}</div>
         <button type="button" className="invite-home" onClick={inviteFriends}>🔥 Invite friends to play <b>↗</b></button>
 
@@ -234,7 +248,7 @@ export default function App(){
       {key&&result&&<div className={"result result-"+key.toLowerCase()}><div className="resulttop"><button onClick={reset}>← Try another person</button><small>{secretMode?"SECRET RESULT":"RESULT REVEALED"}</small></div><div className="resultcard"><div className="result-logo"><img src="/favicon.svg" alt="" /></div><div className="result-sparkles"><i/><i/><i/><i/><i/><i/></div><div className="pair">{displayPair}</div><div className="emoji">{result.emoji}</div><small>THE FLAMES SAYS</small><h2>{result.name}</h2><p>{result.messages[quipIndex]}</p><div className="compat"><div><span>PLAYFUL COMPATIBILITY</span><b>{pct}%</b></div><div className="meter"><i style={{width:pct+"%"}}/></div><small>Entertainment only — generated from the names.</small></div><div className="actions"><button className="share-primary" onClick={()=>{setShareNotice("");setShareOpen(true)}}>Share result ↗</button><button onClick={download}>{downloaded?"Downloaded ✓":"Download card ↓"}</button><button onClick={copy}>{copied?"Copied ✓":"Copy result"}</button></div></div><p className="disclaimer">FLAMES is a classic name game, not a real measure of relationship compatibility.</p>{!user&&!nudgeDismissed&&<div className="account-nudge"><div className="nudge-flame"><Flame/></div><div className="nudge-copy"><small>KEEP YOUR FLAMES</small><strong>Create an account today</strong><p>Save your results and keep your FLAMES history connected.</p></div><div className="nudge-actions"><button onClick={()=>openAuth("signup")}>Create account</button><button className="nudge-later" onClick={()=>setNudgeDismissed(true)}>Maybe later</button></div></div>}</div>}
     </section>
     {shareOpen&&<div className="share-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShareOpen(false)}}><div className="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title"><button className="share-close" type="button" aria-label="Close share options" onClick={()=>setShareOpen(false)}>×</button><div className="share-kicker">YOUR RESULT IS READY</div><h2 id="share-title">Share your FLAMES result</h2><p className="share-sub">Send the card directly, or choose a platform.</p><button className="share-card-btn" type="button" onClick={shareCard}>↗ <span>Share result card</span><small>Choose an app on your device</small></button><div className="share-divider"><span>or choose a platform</span></div><div className="platform-grid"><button type="button" onClick={()=>shareTo("x")}><b>𝕏</b><span>X</span></button><button type="button" onClick={()=>shareTo("instagram")}><b>◎</b><span>Instagram</span></button><button type="button" onClick={()=>shareTo("whatsapp")}><b>◔</b><span>WhatsApp</span></button><button type="button" onClick={()=>shareTo("facebook")}><b>f</b><span>Facebook</span></button><button type="button" onClick={()=>shareTo("threads")}><b>@</b><span>Threads</span></button><button type="button" onClick={()=>shareTo("reddit")}><b>●</b><span>Reddit</span></button><button type="button" onClick={()=>shareTo("discord")}><b>◌</b><span>Discord</span></button></div>{shareNotice&&<div className="share-notice">{shareNotice}</div>}<button type="button" className="share-copy-link" onClick={copy}>{copied?"Result copied ✓":"Copy result text"}</button><p className="share-footnote">On phones that support it, “Share result card” opens the system share sheet so the image can go straight to Instagram, WhatsApp, Facebook and other apps. On desktop, the platform buttons open their share pages.</p></div></div>}
-    {authOpen&&<AuthModal mode={authMode} onClose={()=>setAuthOpen(false)} onAuthed={finishAuth}/>}<footer><span>FLAMES</span><span>Classic game · Modern experience</span><button type="button" className="feedback-link" onClick={()=>setFeedbackOpen(true)}>Feedback</button><span>🔥</span></footer>
+    {authOpen&&<AuthModal mode={authMode} success={authSuccess} successName={authSuccessName} onClose={closeAuth} onAuthed={finishAuth}/>}<footer><span>FLAMES</span><span>Classic game · Modern experience</span><button type="button" className="feedback-link" onClick={()=>setFeedbackOpen(true)}>Feedback</button><span>🔥</span></footer>
     {miniPromo&&<aside className="mini-promo"><button className="mini-close" aria-label="Dismiss MINI BOX promotion" onClick={dismissMiniPromo}>×</button><div className="mini-promo-kicker">ANOTHER LITTLE THING</div><strong>Try MINI BOX</strong><p>Ask questions anonymously and get real human answers.</p><a href="https://minibox-app.vercel.app/" target="_blank" rel="noreferrer">Try MINI BOX ↗</a></aside>}
     {feedbackOpen&&<div className="feedback-backdrop" role="dialog" aria-modal="true" aria-label="FLAMES feedback"><div className="feedback-modal"><button className="feedback-close" onClick={()=>setFeedbackOpen(false)} aria-label="Close feedback">×</button>{feedbackSent?<div className="feedback-success"><div>✓</div><h3>Thanks for the feedback.</h3><p>It helps us improve FLAMES.</p></div>:<><small>OPTIONAL FEEDBACK</small><h3>How's FLAMES?</h3><p className="feedback-sub">Tell us what you think. You can close this without sending anything.</p><div className="feedback-ratings">{[["love_it","😍","Love it"],["good","🙂","Good"],["okay","😐","Okay"],["needs_work","😕","Needs work"]].map(([v,e,t])=><button key={v} type="button" className={feedbackRating===v?"selected":""} onClick={()=>setFeedbackRating(v)}><span>{e}</span>{t}</button>)}</div><div className="feedback-field"><label>Anything we should improve? <em>Optional</em></label><textarea value={feedbackMessage} onChange={e=>setFeedbackMessage(e.target.value)} maxLength={1000} placeholder="Tell us what you think..."/></div><div className="feedback-field"><label>Category <em>Optional</em></label><div className="feedback-cats">{[["bug","Bug"],["idea","Idea"],["ui","UI"],["game","Game"],["other","Other"]].map(([v,t])=><button key={v} type="button" className={feedbackCategory===v?"selected":""} onClick={()=>setFeedbackCategory(v)}>{t}</button>)}</div></div><button className="feedback-submit" disabled={feedbackSending||(!feedbackRating&&!feedbackMessage.trim())} onClick={sendFeedback}>{feedbackSending?"Sending...":"Send feedback"}</button></>}</div></div>}
   </main>;
