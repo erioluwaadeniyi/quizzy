@@ -199,3 +199,9 @@
 .recovery-done{text-align:center}
 .recovery-done .page-flame{margin-inline:auto}
 @media(max-width:680px){.password-label-row a{font-size:8px}.recovery-card{padding:26px 22px}}
+
+/* Password recovery code UI */
+.recovery-code-input{text-align:center;font:800 26px "Space Grotesk"!important;letter-spacing:.24em;padding-left:calc(13px + .24em)!important}
+.recovery-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px}
+.recovery-actions button,.recovery-actions a{border:0;background:none;color:#d95832;font-size:9px;font-weight:900;text-decoration:none;cursor:pointer}
+.recovery-actions button:disabled{opacity:.45;cursor:not-allowed}
