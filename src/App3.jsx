@@ -3,7 +3,7 @@ import "./App.css";
 import { trackEvent } from "./analytics.js";
 import { submitFeedback } from "./feedback.js";
 import { supabase } from "./supabase.js";
-import { signIn, signOut, signUp } from "./auth.js";
+import { signIn, signOut, signUp, requestPasswordReset, updatePassword } from "./auth.js";
 
 const RESULTS = {
   F: { name:"Friends", emoji:"🤝", messages:["The universe said: relax 😂 You two are giving best-friend energy.","No drama, just vibes. These names are screaming friendship 😂.","Plot twist: the perfect person to send memes to all day."] },
@@ -113,7 +113,107 @@ function AuthPage({type}){
 
   if(done)return <main className="auth-page flames-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="auth-page-card success-page"><div className="page-flame"><Flame/></div><small className="auth-kicker">ACCOUNT READY</small><h1>You're in.</h1><p>Your FLAMES account is connected. Your next matches can stay with you.</p><div className="page-benefits"><span>🔥 Save matches</span><span>⚡ Build your streak</span><span>✨ Keep your @identity</span></div><a className="auth-page-primary" href="/">Start playing ↗</a></section></main>;
 
-  return <main className="auth-page flames-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="auth-page-card"><div className="page-flame"><Flame/></div><small className="auth-kicker">{isLogin?"WELCOME BACK":"JOIN FLAMES"}</small><h1>{isLogin?"Welcome back.":"Keep your FLAMES."}</h1><p>{isLogin?"Log in and get back to the game.":"Create an account to save your matches, keep your streak and have your own FLAMES identity."}</p>{!isLogin&&<div className="page-unlocks"><span>🔥 Save every result</span><span>⚡ Keep your streak</span><span>✨ Unique @username</span></div>}{!isLogin&&<label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/><small>Full names can be identical.</small></label>}{!isLogin&&<label>FLAMES username<div className="username-field"><span className="username-prefix">@</span><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/></div>{usernameMessage&&<small className={"field-status "+usernameState}>{usernameMessage}</small>}</label>}<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={isLogin?"Enter your password":"Create a password (6+ characters)"} autoComplete={isLogin?"current-password":"new-password"}/></label>{error&&<div className="auth-error">{error}</div>}<button className="auth-page-primary" disabled={busy||!email||password.length<6||(!isLogin&&usernameState!=="success")} onClick={submit}>{busy?"Please wait…":isLogin?"Log in":"Create account"}</button><a className="auth-page-switch" href={isLogin?"/register":"/login"}>{isLogin?"New to FLAMES? Create an account":"Already have an account? Log in"}</a></section></main>
+  return <main className="auth-page flames-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="auth-page-card"><div className="page-flame"><Flame/></div><small className="auth-kicker">{isLogin?"WELCOME BACK":"JOIN FLAMES"}</small><h1>{isLogin?"Welcome back.":"Keep your FLAMES."}</h1><p>{isLogin?"Log in and get back to the game.":"Create an account to save your matches, keep your streak and have your own FLAMES identity."}</p>{!isLogin&&<div className="page-unlocks"><span>🔥 Save every result</span><span>⚡ Keep your streak</span><span>✨ Unique @username</span></div>}{!isLogin&&<label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/><small>Full names can be identical.</small></label>}{!isLogin&&<label>FLAMES username<div className="username-field"><span className="username-prefix">@</span><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/></div>{usernameMessage&&<small className={"field-status "+usernameState}>{usernameMessage}</small>}</label>}<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label><label><div className="password-label-row"><span>Password</span>{isLogin&&<a href="/forgot-password">Forgot password?</a>}</div><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={isLogin?"Enter your password":"Create a password (6+ characters)"} autoComplete={isLogin?"current-password":"new-password"}/></label>{error&&<div className="auth-error">{error}</div>}<button className="auth-page-primary" disabled={busy||!email||password.length<6||(!isLogin&&usernameState!=="success")} onClick={submit}>{busy?"Please wait…":isLogin?"Log in":"Create account"}</button><a className="auth-page-switch" href={isLogin?"/register":"/login"}>{isLogin?"New to FLAMES? Create an account":"Already have an account? Log in"}</a></section></main>
+}
+
+
+
+function ForgotPasswordPage(){
+  const [email,setEmail]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const [sent,setSent]=useState(false);
+
+  const submit=async e=>{
+    e.preventDefault();
+    setError("");
+    const clean=email.trim().toLowerCase();
+    if(!/^\S+@\S+\.\S+$/.test(clean)){setError("Enter a valid email address.");return}
+    setBusy(true);
+    const result=await requestPasswordReset({email:clean,redirectTo:window.location.origin+"/reset-password"});
+    setBusy(false);
+    if(result.error){setError(result.error.message||"Unable to send the reset email.");return}
+    setSent(true);
+  };
+
+  return <main className="auth-page flames-page">
+    <a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a>
+    <section className="auth-page-card recovery-card">
+      <div className="page-flame"><Flame/></div>
+      <small className="auth-kicker">PASSWORD RESET</small>
+      <h1>Forgot your password?</h1>
+      {sent
+        ? <><p>We sent a reset link to <strong>{email.trim()}</strong> if that email is connected to a FLAMES account. Check your inbox, including spam.</p><a className="auth-page-primary" href="/login">Back to log in</a></>
+        : <><p>Enter the email you use for FLAMES and we’ll send you a secure link to choose a new password.</p>
+          <form onSubmit={submit}>
+            <label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label>
+            {error&&<div className="auth-error">{error}</div>}
+            <button className="auth-page-primary" disabled={busy||!email.trim()}>{busy?"Sending reset link…":"Send reset link"}</button>
+          </form>
+          <a className="auth-page-switch" href="/login">Back to log in</a>
+        </>}
+    </section>
+  </main>;
+}
+
+function ResetPasswordPage(){
+  const [ready,setReady]=useState(false);
+  const [checking,setChecking]=useState(true);
+  const [password,setPassword]=useState("");
+  const [confirm,setConfirm]=useState("");
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const [done,setDone]=useState(false);
+
+  useEffect(()=>{
+    let active=true;
+    (async()=>{
+      const recovery=await supabase.auth.recoverSessionFromUrl();
+      if(!active)return;
+      if(recovery?.session){setReady(true);setChecking(false);return}
+      const {data}=await supabase.auth.getUser();
+      if(!active)return;
+      setReady(Boolean(data?.user));
+      setChecking(false);
+    })();
+    return()=>{active=false};
+  },[]);
+
+  const submit=async e=>{
+    e.preventDefault();
+    setError("");
+    if(password.length<6){setError("Password must be at least 6 characters.");return}
+    if(password!==confirm){setError("Passwords do not match.");return}
+    if(!ready){setError("This reset link is invalid or expired. Request a new one.");return}
+    setBusy(true);
+    const result=await updatePassword({password});
+    if(!result.error){
+      await signOut();
+      setDone(true);
+    } else {
+      setError(result.error.message||"Unable to update your password.");
+    }
+    setBusy(false);
+  };
+
+  return <main className="auth-page flames-page">
+    <a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a>
+    <section className={"auth-page-card recovery-card "+(done?"recovery-done":"")}>
+      <div className="page-flame"><Flame/></div>
+      {checking
+        ? <><small className="auth-kicker">CHECKING LINK</small><h1>Opening secure reset.</h1><p>Please wait while we verify your password reset link.</p></>
+        : done
+          ? <><small className="auth-kicker">PASSWORD UPDATED</small><h1>You’re back in control.</h1><p>Your FLAMES password has been changed. Log in with your new password.</p><a className="auth-page-primary" href="/login">Log in ↗</a></>
+          : !ready
+            ? <><small className="auth-kicker">RESET LINK</small><h1>This link is no longer valid.</h1><p>Password reset links expire. Request a fresh one and use the newest email.</p><a className="auth-page-primary" href="/forgot-password">Request a new link</a><a className="auth-page-switch" href="/login">Back to log in</a></>
+            : <><small className="auth-kicker">CHOOSE A NEW PASSWORD</small><h1>Set a new password.</h1><p>Use a password you’ll remember or store safely in your password manager.</p><form onSubmit={submit}>
+              <label>New password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="New password (6+ characters)" autoComplete="new-password"/></label>
+              <label>Confirm password<input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Repeat your new password" autoComplete="new-password"/></label>
+              {error&&<div className="auth-error">{error}</div>}
+              <button className="auth-page-primary" disabled={busy||password.length<6||confirm.length<6}>{busy?"Updating password…":"Update password"}</button>
+            </form><a className="auth-page-switch" href="/login">Back to log in</a></>}
+    </section>
+  </main>;
 }
 
 function AuthModal({mode,onClose,onAuthed,success,successName}){
@@ -202,6 +302,8 @@ export default function App(){
   const authPath=location.pathname.replace(/\/$/,"");
   if(authPath==="/login") return <AuthPage type="login"/>;
   if(authPath==="/register") return <AuthPage type="register"/>;
+  if(authPath==="/forgot-password") return <ForgotPasswordPage/>;
+  if(authPath==="/reset-password") return <ResetPasswordPage/>;
   const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
   const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("id").eq("user_id",u.id).limit(100)]);setProfile(p||null);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
   useEffect(()=>{supabase.auth.getUser().then(async({data})=>{if(data?.user){setUser(data.user);await loadAccount(data.user)}});const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{const u=session?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setSavedCount(0);setStreak(0)}});return()=>sub.subscription.unsubscribe()},[]);
