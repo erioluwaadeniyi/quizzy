@@ -4,7 +4,7 @@ import { trackEvent } from "./analytics.js";
 import { submitFeedback } from "./feedback.js";
 import { supabase } from "./supabase.js";
 import { Avatar, AVATARS } from "./avatarCatalog.jsx";
-import { signIn, signOut, signUp } from "./auth.js";
+import { createAccount, signOut } from "./auth.js";
 import { GAME_TEMPLATES } from "./featureData.js";
 
 const RESULTS = {
@@ -67,152 +67,81 @@ function downloadResultCard(nameA,nameB,resultKey,percent,message,secret){
 }
 
 
-export default function AuthModal({mode,onClose,onAuthed}){
-  const [kind,setKind]=useState(mode||"login");
-  const [email,setEmail]=useState("");
-  const [password,setPassword]=useState("");
+export default function AuthModal({onClose,onAuthed}){
   const [name,setName]=useState("");
   const [username,setUsername]=useState("");
   const [avatar,setAvatar]=useState(1);
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
-  const [sent,setSent]=useState(false);
   const [usernameStatus,setUsernameStatus]=useState({state:"idle",message:""});
-  const [emailStatus,setEmailStatus]=useState({state:"idle",message:""});
 
   useEffect(()=>{
-    if(kind!=="signup"){
-      setUsernameStatus({state:"idle",message:""});
-      return;
-    }
     const q=username.trim().toLowerCase();
-    if(!q){
-      setUsernameStatus({state:"idle",message:""});
-      return;
-    }
-    if(q.length<3){
-      setUsernameStatus({state:"error",message:"Username must be at least 3 characters."});
-      return;
-    }
+    if(!q){setUsernameStatus({state:"idle",message:""});return}
+    if(q.length<3){setUsernameStatus({state:"error",message:"Username must be at least 3 characters."});return}
     let cancelled=false;
     const timer=window.setTimeout(async()=>{
       setUsernameStatus({state:"checking",message:"Checking username…"});
       const {data,error:lookupError}=await supabase.from("flames_profiles").select("id").eq("username",q).limit(1);
       if(cancelled)return;
-      if(lookupError){
-        setUsernameStatus({state:"idle",message:""});
-        return;
-      }
-      if(data?.length){
-        setUsernameStatus({state:"error",message:"That username is already taken."});
-      }else{
-        setUsernameStatus({state:"success",message:"Username is available."});
-      }
-    },350);
-    return()=>{cancelled=true;window.clearTimeout(timer)};
-  },[username,kind]);
-
-  useEffect(()=>{
-    if(kind!=="signup"){setEmailStatus({state:"idle",message:""});return}
-    const value=email.trim().toLowerCase();
-    if(!value){setEmailStatus({state:"idle",message:""});return}
-    const valid=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-    setEmailStatus(valid
-      ? {state:"success",message:"Email format looks good. Availability is confirmed when you register."}
-      : {state:"error",message:"Enter a valid email address."});
-  },[email,kind]);
+      if(lookupError){setUsernameStatus({state:"idle",message:""});return}
+      setUsernameStatus(data?.length
+        ? {state:"error",message:"That username is already taken."}
+        : {state:"success",message:"Username is available."});
+    },300);
+    return()=>{cancelled=true;window.clearTimeout(timer)}
+  },[username]);
 
   const submit=async e=>{
     e.preventDefault();
     setError("");
-    if(kind==="signup"){
-      if(!name.trim()){setError("Enter your full name.");return}
-      const cleanUsername=username.trim().toLowerCase();
-      if(cleanUsername.length<3){setError("Choose a username with at least 3 characters.");return}
-      if(usernameStatus.state==="error"||usernameStatus.state==="checking"){setError(usernameStatus.message||"Please choose an available username.");return}
-      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())){setError("Enter a valid email address.");return}
-    }
+    const cleanName=name.trim();
+    const cleanUsername=username.trim().toLowerCase();
+    if(!cleanName){setError("Enter your full name.");return}
+    if(cleanUsername.length<3){setError("Choose a username with at least 3 characters.");return}
+    if(usernameStatus.state!=="success"){setError("Choose an available username.");return}
     setBusy(true);
-    const r=kind==="login"
-      ?await signIn({email,password})
-      :await signUp({email,password,displayName:name.trim(),username:username.trim().toLowerCase(),avatarId:avatar});
+    const r=await createAccount({displayName:cleanName,username:cleanUsername,avatarId:avatar});
     setBusy(false);
-    if(r.error){
-      const message=String(r.error.message||"");
-      if(kind==="signup"&&/already|registered|exists|duplicate/i.test(message)&&/email/i.test(message)){
-        setEmailStatus({state:"error",message:"This email is already registered."});
-      }
-      if(kind==="signup"&&/username|unique/i.test(message)){
-        setUsernameStatus({state:"error",message:"That username is already taken."});
-      }
-      setError(message||"Unable to complete registration.");
-      return;
-    }
-    if(kind==="signup"){
-      setEmailStatus({state:"success",message:"Email is available and registration was accepted."});
-      if(!r.data?.session){setSent(true);return}
-    }
+    if(r.error){setError(r.error.message||"Unable to create your account.");return}
     onAuthed(r.data?.user||null);
   };
 
   return <div className="auth-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
     <div className="auth-modal">
-      {sent
-        ? <><div className="auth-kicker">CHECK YOUR EMAIL</div><h2>Confirm your account</h2><p>We sent a confirmation link to <b>{email}</b>.</p><button className="auth-primary" onClick={onClose}>Close</button></>
-        : <>
-          <button className="auth-close" onClick={onClose}>×</button>
-          <div className="auth-kicker">{kind==="login"?"WELCOME BACK":"JOIN FLAMES"}</div>
-          <h2>{kind==="login"?"Log in to FLAMES":"Register for FLAMES"}</h2>
-          <p>{kind==="login"?"Keep your Circle, saved matches and games in one place.":"Create your identity, choose an avatar and keep your FLAMES history private."}</p>
-
-          {kind==="signup"&&<>
-            <label>Full name
-              <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/>
-              <small className="auth-hint">Your full name can be the same as another person's.</small>
-            </label>
-
-            <label>FLAMES username
-              <div className="username-field">
-                <span className="username-prefix">@</span>
-                <input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/>
-              </div>
-              {usernameStatus.message&&<small className={"field-status "+usernameStatus.state}>{usernameStatus.message}</small>}
-            </label>
-
-            <div className="avatar-picker">
-              {AVATARS.map(x=><button type="button" key={x.id} className={avatar===x.id?"selected":""} onClick={()=>setAvatar(x.id)}><Avatar id={x.id} size={52}/></button>)}
-            </div>
-          </>}
-
-          <label>Email
-            <input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/>
-            {kind==="signup"&&emailStatus.message&&<small className={"field-status "+emailStatus.state}>{emailStatus.message}</small>}
-          </label>
-
-          <label>Password
-            <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Create a strong password" autoComplete={kind==="login"?"current-password":"new-password"}/>
-            {kind==="signup"&&<small className="auth-hint">Your password is hashed and stored securely by Supabase Auth.</small>}
-          </label>
-
-          {error&&<div className="auth-error">{error}</div>}
-          <button className="auth-primary" disabled={busy||!email||password.length<6||(kind==="signup"&&(username.length<3||usernameStatus.state==="error"))} onClick={submit}>
-            {busy?"Please wait…":kind==="login"?"Log in":"Register"}
-          </button>
-          <button type="button" className="auth-switch" onClick={()=>{setKind(kind==="login"?"signup":"login");setError("");setUsernameStatus({state:"idle",message:""});setEmailStatus({state:"idle",message:""})}}>
-            {kind==="login"?"New to FLAMES? Register":"Already have an account? Log in"}
-          </button>
-        </>
-      }
+      <button className="auth-close" onClick={onClose}>×</button>
+      <div className="auth-kicker">JOIN FLAMES</div>
+      <h2>Create your FLAMES account</h2>
+      <p>No email. No password. Choose your name, username and avatar, then you're in.</p>
+      <label>Full name
+        <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/>
+        <small className="auth-hint">Full names don't have to be unique.</small>
+      </label>
+      <label>FLAMES username
+        <div className="username-field">
+          <span className="username-prefix">@</span>
+          <input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/>
+        </div>
+        {usernameStatus.message&&<small className={"field-status "+usernameStatus.state}>{usernameStatus.message}</small>}
+      </label>
+      <div className="avatar-picker">
+        {AVATARS.map(x=><button type="button" key={x.id} className={avatar===x.id?"selected":""} onClick={()=>setAvatar(x.id)}><Avatar id={x.id} size={52}/></button>)}
+      </div>
+      {error&&<div className="auth-error">{error}</div>}
+      <button className="auth-primary" disabled={busy||!name.trim()||usernameStatus.state!=="success"} onClick={submit}>
+        {busy?"Creating account…":"Create account"}
+      </button>
+      <small className="auth-hint">Your account is kept in this browser session. Keep access to this browser so you can return to your FLAMES account.</small>
     </div>
   </div>
 }
 function App(){
-  const [gameId,setGameId]=useState(()=>location.pathname.startsWith("/game/")?location.pathname.split("/")[2]:null),[gameData,setGameData]=useState(null),[gameAnswer,setGameAnswer]=useState(""),[gameSent,setGameSent]=useState(false),[gameLoading,setGameLoading]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}}),[user,setUser]=useState(null),[profile,setProfile]=useState(null),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[view,setView]=useState("home"),[matches,setMatches]=useState([]),[circle,setCircle]=useState([]),[games,setGames]=useState([]),[pending,setPending]=useState([]),[loadingData,setLoadingData]=useState(false),[gameOpen,setGameOpen]=useState(false),[selectedTemplate,setSelectedTemplate]=useState(null),[gameTitle,setGameTitle]=useState(""),[gamePrompt,setGamePrompt]=useState(""),[gameKind,setGameKind]=useState("quiz"),[notice,setNotice]=useState(""),[circleQuery,setCircleQuery]=useState(""),[circleResult,setCircleResult]=useState(null),[circleBusy,setCircleBusy]=useState(false);
+  const [gameId,setGameId]=useState(()=>location.pathname.startsWith("/game/")?location.pathname.split("/")[2]:null),[gameData,setGameData]=useState(null),[gameAnswer,setGameAnswer]=useState(""),[gameSent,setGameSent]=useState(false),[gameLoading,setGameLoading]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}}),[user,setUser]=useState(null),[profile,setProfile]=useState(null),[authOpen,setAuthOpen]=useState(false),[view,setView]=useState("home"),[matches,setMatches]=useState([]),[circle,setCircle]=useState([]),[games,setGames]=useState([]),[pending,setPending]=useState([]),[loadingData,setLoadingData]=useState(false),[gameOpen,setGameOpen]=useState(false),[selectedTemplate,setSelectedTemplate]=useState(null),[gameTitle,setGameTitle]=useState(""),[gamePrompt,setGamePrompt]=useState(""),[gameKind,setGameKind]=useState("quiz"),[notice,setNotice]=useState(""),[circleQuery,setCircleQuery]=useState(""),[circleResult,setCircleResult]=useState(null),[circleBusy,setCircleBusy]=useState(false);
 
   const loadPrivate=async(u)=>{if(!u)return;setLoadingData(true);const [p,m,g,cx]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(50),supabase.from("flames_games").select("*").eq("creator_id",u.id).order("created_at",{ascending:false}).limit(30),supabase.from("flames_connections").select("*").or("requester_id.eq."+u.id+",addressee_id.eq."+u.id).order("created_at",{ascending:false})]);setProfile(p.data||null);setMatches(m.data||[]);setGames(g.data||[]);setCircle(cx.data||[]);setLoadingData(false)};
   const refreshUser=async()=>{const {data:{user:u}}=await supabase.auth.getUser();setUser(u||null);if(u)await loadPrivate(u)};
-  const openView=v=>{if(!user){setAuthMode("login");setAuthOpen(true);return}setView(v)};const submitGameAnswer=async()=>{if(!gameId||!gameAnswer.trim())return;setGameLoading(true);const {error}=await supabase.from("flames_game_responses").insert({game_id:gameId,answer:gameAnswer.trim()});setGameLoading(false);if(!error)setGameSent(true)};useEffect(()=>{if(!gameId)return;setGameLoading(true);supabase.from("flames_games").select("*").eq("id",gameId).single().then(({data})=>{setGameData(data||null);setGameLoading(false)})},[gameId]);
-  const openAuth=mode=>{setAuthMode(mode);setAuthOpen(true)};
+  const openView=v=>{if(!user){setAuthOpen(true);return}setView(v)};const submitGameAnswer=async()=>{if(!gameId||!gameAnswer.trim())return;setGameLoading(true);const {error}=await supabase.from("flames_game_responses").insert({game_id:gameId,answer:gameAnswer.trim()});setGameLoading(false);if(!error)setGameSent(true)};useEffect(()=>{if(!gameId)return;setGameLoading(true);supabase.from("flames_games").select("*").eq("id",gameId).single().then(({data})=>{setGameData(data||null);setGameLoading(false)})},[gameId]);
+  const openAuth=()=>setAuthOpen(true);
   const updateStreak=async()=>{if(!user||!profile)return;const today=new Date().toISOString().slice(0,10);if(profile.last_active_date===today)return;const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=profile.last_active_date===yesterday?(profile.streak_count||0)+1:1;const {data}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",user.id).select().single();if(data)setProfile(data)};
   const createGame=async()=>{if(!user||!gamePrompt.trim())return;const {data,error}=await supabase.from("flames_games").insert({creator_id:user.id,kind:gameKind,title:gameTitle.trim()||"A FLAMES question",prompt:gamePrompt.trim()}).select().single();if(error){setNotice(error.message);return}setGames(g=>[data,...g]);setGameOpen(false);setGameTitle("");setGamePrompt("");setSelectedTemplate(null);setNotice("Game created. The share link is ready.");try{await navigator.clipboard.writeText(location.origin+"/game/"+data.id)}catch{}};
   const applyTemplate=t=>{setSelectedTemplate(t);setGameKind(t.kind);setGameTitle(t.title);setGamePrompt(t.prompt)};
@@ -274,7 +203,7 @@ function App(){
   const dismissMiniPromo=()=>{setMiniPromo(false);try{localStorage.setItem("flames_mini_promo_dismissed","1")}catch{}};
   if(gameId){return <main className="app game-public"><header><button className="brand" onClick={()=>{history.pushState({},"","/");setGameId(null)}} aria-label="FLAMES home"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span className="brand-word">FLAMES</span></button><div className="fun"><i/> Private games</div></header><section className="public-game-wrap">{gameLoading?<div className="public-game-card"><div className="auth-kicker">LOADING</div><h1>Getting your FLAMES question…</h1></div>:!gameData?<div className="public-game-card"><div className="auth-kicker">OOPS</div><h1>This game is no longer available.</h1><p>The link may have expired.</p></div>:gameSent?<div className="public-game-card result-public"><div className="public-game-avatar">🔥</div><div className="auth-kicker">ANSWER SENT</div><h1>YOU SHOWED UP 👀</h1><p>Your answer is with the person who created this game.</p><div className="public-result-card"><b>✨ FLAMES RESULT CARD</b><strong>ANSWERED & READY</strong><span>{gameData.title}</span><small>Screenshot this card or send it back to your friend.</small></div><button className="auth-primary" onClick={()=>navigator.share?.({title:"My FLAMES answer",text:"I answered your FLAMES game 👀"})}>Share this result</button></div>:<div className="public-game-card"><div className="auth-kicker">{String(gameData.kind).toUpperCase()}</div><h1>{gameData.title}</h1><p>{gameData.prompt}</p><label>Your answer<textarea value={gameAnswer} onChange={e=>setGameAnswer(e.target.value)} placeholder="Type your answer…"/></label><button className="auth-primary" onClick={submitGameAnswer} disabled={!gameAnswer.trim()||gameLoading}>{gameLoading?"Sending…":"Answer & reveal result"}</button><small className="public-note">No account needed to answer.</small></div>}</section></main>}
   return <main className={"app "+(secretMode?"secret-mode":"")}><div className="glow g1"/><div className="glow g2"/>
-    <header className="main-navbar"><button className="brand" onClick={reset} aria-label="Back to FLAMES home"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span className="brand-word">FLAMES</span></button><nav className="main-nav" aria-label="Main navigation"><button className={view==="home"?"active":""} onClick={()=>setView("home")}>Match</button><button className={view==="games"?"active":""} onClick={()=>openView("games")}>Play</button><button className={view==="games"?"":"disabled-nav"} onClick={()=>openView("games")}>Questions</button><button className={view==="circle"?"active":""} onClick={()=>openView("circle")}>My Circle</button></nav><div className="header-right"><div className="fun"><i/> Just for fun</div>{user?<div className="header-account"><button className="header-profile" onClick={()=>openView("circle")}><Avatar id={profile?.avatar_id||1} size={32}/><span>{profile?.display_name||"My Circle"}</span></button><button className="header-logout" onClick={async()=>{await signOut();setUser(null);setView("home")}}>Log out</button></div>:<div className="header-auth"><button onClick={()=>openAuth("login")}>Log in</button><button className="header-signup" onClick={()=>openAuth("signup")}>Register</button></div>}</div></header>
+    <header className="main-navbar"><button className="brand" onClick={reset} aria-label="Back to FLAMES home"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span className="brand-word">FLAMES</span></button><nav className="main-nav" aria-label="Main navigation"><button className={view==="home"?"active":""} onClick={()=>setView("home")}>Match</button><button className={view==="games"?"active":""} onClick={()=>openView("games")}>Play</button><button className={view==="games"?"":"disabled-nav"} onClick={()=>openView("games")}>Questions</button><button className={view==="circle"?"active":""} onClick={()=>openView("circle")}>My Circle</button></nav><div className="header-right"><div className="fun"><i/> Just for fun</div>{user?<div className="header-account"><button className="header-profile" onClick={()=>openView("circle")}><Avatar id={profile?.avatar_id||1} size={32}/><span>{profile?.display_name||"My Circle"}</span></button><button className="header-logout" onClick={async()=>{await signOut();setUser(null);setView("home")}}>Log out</button></div>:<div className="header-auth"><button className="header-signup" onClick={openAuth}>Create account</button></div>}</div></header>
     <section className="shell">
 {user&&<div className="account-dock"><button className="account-mini" onClick={()=>openView("circle")}><Avatar id={profile?.avatar_id||1} size={38}/><span><b>{profile?.display_name||"My FLAMES"}</b><small>@{profile?.username||"set-your-id"}</small></span></button><button className="account-streak" onClick={()=>openView("home")}>🔥 {profile?.streak_count||0} day streak</button><button className="account-logout" onClick={async()=>{await signOut();setUser(null);setView("home")}}>Log out</button></div>}
 {user&&view!=="home"&&<section className="member-shell"><div className="member-nav"><button className={view==="home"?"active":""} onClick={()=>setView("home")}>Match</button><button className={view==="circle"?"active":""} onClick={()=>setView("circle")}>My Circle</button><button className={view==="games"?"active":""} onClick={()=>setView("games")}>Play & Questions</button><button className={view==="saved"?"active":""} onClick={()=>setView("saved")}>Saved</button></div>{view==="circle"&&<div className="member-panel"><div className="panel-heading"><div><small>PRIVATE</small><h2>My Circle</h2><p>Your connections stay between you and the people you choose.</p></div><div className="connect-box"><input value={circleQuery} onChange={e=>setCircleQuery(e.target.value.replace(/[^a-z0-9_]/gi,"").slice(0,20))} placeholder="Enter their FLAMES ID"/><button className="dark-btn" onClick={findCirclePerson} disabled={circleBusy||!circleQuery.trim()}>{circleBusy?"Searching…":"+ Connect"}</button></div></div>{circleResult&&<div className="found-person"><Avatar id={circleResult.avatar_id||1} size={48}/><div><b>{circleResult.display_name}</b><small>@{circleResult.username}</small></div><button className="dark-btn" onClick={()=>connectTo(circleResult.id)}>Send request</button></div>}{circle.filter(x=>x.status==="pending"&&x.addressee_id===user.id).length>0&&<div className="requests"><small>REQUESTS FOR YOU</small>{circle.filter(x=>x.status==="pending"&&x.addressee_id===user.id).map(x=><div className="request-row" key={x.id}><span>Someone wants to join your Circle</span><button onClick={()=>acceptConnection(x.id)}>Accept</button></div>)}</div>}<div className="circle-grid">{circle.filter(x=>x.status==="accepted").map(x=><div className="circle-card" key={x.id}><Avatar id={(x.requester_id===user.id?2:3)} size={58}/><div><b>FLAMES friend</b><small>Connected</small></div></div>)}{!circle.some(x=>x.status==="accepted")&&<div className="empty-card"><span>🤝</span><b>Your Circle is empty</b><p>Connect with someone to start playing together.</p></div>}</div></div>}{view==="games"&&<div className="member-panel"><div className="panel-heading"><div><small>CREATE</small><h2>Games, questions & recommendations</h2><p>Start with a template, customize it, then share the link.</p></div><button className="dark-btn" onClick={()=>setGameOpen(true)}>+ Create</button></div><div className="template-grid">{GAME_TEMPLATES.map(t=><button key={t.title} className="template-card" onClick={()=>{applyTemplate(t);setGameOpen(true)}}><span>{t.kind==="recommendation"?"🎬":t.kind==="opinion"?"👀":t.kind==="poll"?"📊":"🎮"}</span><b>{t.title}</b><small>{t.prompt}</small></button>)}</div><div className="created-list">{games.map(g=><div className="created-card" key={g.id}><div><small>{g.kind.toUpperCase()}</small><b>{g.title}</b><p>{g.prompt}</p></div><button onClick={()=>navigator.clipboard?.writeText(location.origin+"/game/"+g.id)}>Copy link</button></div>)}</div></div>}{view==="saved"&&<div className="member-panel"><div className="panel-heading"><div><small>YOUR HISTORY</small><h2>Saved matches</h2><p>Your FLAMES matches are private to your account.</p></div></div><div className="saved-list">{matches.map(m=><div className="saved-card" key={m.id}><div><b>{m.name_a} × {m.name_b}</b><small>{new Date(m.created_at).toLocaleDateString()}</small></div><strong>{RESULTS[m.result_key]?.emoji} {RESULTS[m.result_key]?.name}</strong><span>{m.percent}%</span></div>)}{!matches.length&&<div className="empty-card"><span>🔥</span><b>No saved matches yet</b><p>Log in and your future FLAMES results can live here.</p></div>}</div></div>}</section>}
