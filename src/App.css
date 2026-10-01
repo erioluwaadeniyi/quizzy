@@ -105,3 +105,12 @@
 @media(max-width:900px){.main-navbar{grid-template-columns:auto 1fr auto;gap:12px}.main-nav{justify-content:flex-start}.main-nav button{padding:8px 9px}.header-profile span{display:none}.header-profile{border-radius:50%;padding:3px}.header-logout{padding:0 8px}}
 @media(max-width:700px){.main-navbar{width:calc(100% - 30px);padding:13px 0;grid-template-columns:auto 1fr auto;gap:7px}.brand-word{display:none}.main-nav{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}.main-nav::-webkit-scrollbar{display:none}.main-nav button{white-space:nowrap;padding:8px 9px;font-size:9px}.header-auth{gap:4px}.header-auth button{height:34px;padding:0 8px}.header-auth .header-signup{font-size:0;padding:0 10px}.header-auth .header-signup:after{content:"Sign up";font-size:9px}.header-logout{height:34px}}
 @media(max-width:500px){.main-navbar{grid-template-columns:auto 1fr}.header-right{grid-column:1/-1;justify-self:stretch;border-top:1px solid #eee6dd;padding-top:8px}.header-right .header-account,.header-right .header-auth{width:100%;justify-content:flex-end}.header-auth button{flex:0 0 auto}.main-nav{min-width:0}}
+
+/* Registration validation */
+.username-field{display:flex;align-items:center;margin-top:6px;border:1px solid #ded3c8;border-radius:11px;background:#fff;overflow:hidden}
+.username-field:focus-within{border-color:#d95832;box-shadow:0 0 0 3px #d9583215}
+.username-prefix{padding-left:12px;color:#9b8f85;font-size:12px;font-weight:800}
+.username-field input{margin-top:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;padding-left:5px!important}
+.auth-hint{display:block;margin-top:5px;color:#a0958b;font-size:8px;line-height:1.4;font-weight:500}
+.field-status{display:block;margin-top:5px;font-size:8px;font-weight:700}
+.field-status.success{color:#39804a}.field-status.error{color:#b24830}.field-status.checking{color:#92745a}
