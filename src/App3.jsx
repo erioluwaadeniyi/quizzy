@@ -3,7 +3,7 @@ import "./App.css";
 import { trackEvent } from "./analytics.js";
 import { submitFeedback } from "./feedback.js";
 import { supabase } from "./supabase.js";
-import { signIn, signOut, signUp, requestPasswordReset, updatePassword } from "./auth.js";
+import { signIn, signOut, signUp, requestPasswordReset, verifyRecoveryCode, updatePassword } from "./auth.js";
 
 const RESULTS = {
   F: { name:"Friends", emoji:"🤝", messages:["The universe said: relax 😂 You two are giving best-friend energy.","No drama, just vibes. These names are screaming friendship 😂.","Plot twist: the perfect person to send memes to all day."] },
@@ -119,102 +119,99 @@ function AuthPage({type}){
 
 
 function ForgotPasswordPage(){
+  const [step,setStep]=useState("email");
   const [email,setEmail]=useState("");
+  const [code,setCode]=useState("");
+  const [password,setPassword]=useState("");
+  const [confirm,setConfirm]=useState("");
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
-  const [sent,setSent]=useState(false);
+  const [verified,setVerified]=useState(false);
+  const [done,setDone]=useState(false);
 
-  const submit=async e=>{
+  const sendCode=async e=>{
     e.preventDefault();
     setError("");
     const clean=email.trim().toLowerCase();
     if(!/^\S+@\S+\.\S+$/.test(clean)){setError("Enter a valid email address.");return}
     setBusy(true);
-    const result=await requestPasswordReset({email:clean,redirectTo:window.location.origin+"/reset-password"});
+    const result=await requestPasswordReset({email:clean});
     setBusy(false);
-    if(result.error){setError(result.error.message||"Unable to send the reset email.");return}
-    setSent(true);
+    if(result.error){setError(result.error.message||"Unable to send the reset code.");return}
+    setStep("code");
   };
 
-  return <main className="auth-page flames-page">
-    <a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a>
-    <section className="auth-page-card recovery-card">
-      <div className="page-flame"><Flame/></div>
-      <small className="auth-kicker">PASSWORD RESET</small>
-      <h1>Forgot your password?</h1>
-      {sent
-        ? <><p>We sent a reset link to <strong>{email.trim()}</strong> if that email is connected to a FLAMES account. Check your inbox, including spam.</p><a className="auth-page-primary" href="/login">Back to log in</a></>
-        : <><p>Enter the email you use for FLAMES and we’ll send you a secure link to choose a new password.</p>
-          <form onSubmit={submit}>
-            <label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label>
-            {error&&<div className="auth-error">{error}</div>}
-            <button className="auth-page-primary" disabled={busy||!email.trim()}>{busy?"Sending reset link…":"Send reset link"}</button>
-          </form>
-          <a className="auth-page-switch" href="/login">Back to log in</a>
-        </>}
-    </section>
-  </main>;
-}
+  const verifyCode=async e=>{
+    e.preventDefault();
+    setError("");
+    const clean=code.replace(/\D/g,"").slice(0,6);
+    if(clean.length!==6){setError("Enter the 6-digit reset code.");return}
+    setBusy(true);
+    const result=await verifyRecoveryCode({email:email.trim().toLowerCase(),token:clean});
+    setBusy(false);
+    if(result.error){setError(result.error.message||"That reset code is invalid or expired.");return}
+    setCode(clean);
+    setVerified(true);
+    setStep("password");
+  };
 
-function ResetPasswordPage(){
-  const [ready,setReady]=useState(false);
-  const [checking,setChecking]=useState(true);
-  const [password,setPassword]=useState("");
-  const [confirm,setConfirm]=useState("");
-  const [busy,setBusy]=useState(false);
-  const [error,setError]=useState("");
-  const [done,setDone]=useState(false);
-
-  useEffect(()=>{
-    let active=true;
-    (async()=>{
-      const recovery=await supabase.auth.recoverSessionFromUrl();
-      if(!active)return;
-      if(recovery?.session){setReady(true);setChecking(false);return}
-      const {data}=await supabase.auth.getUser();
-      if(!active)return;
-      setReady(Boolean(data?.user));
-      setChecking(false);
-    })();
-    return()=>{active=false};
-  },[]);
-
-  const submit=async e=>{
+  const changePassword=async e=>{
     e.preventDefault();
     setError("");
     if(password.length<6){setError("Password must be at least 6 characters.");return}
     if(password!==confirm){setError("Passwords do not match.");return}
-    if(!ready){setError("This reset link is invalid or expired. Request a new one.");return}
+    if(!verified){setError("Verify your reset code first.");return}
     setBusy(true);
     const result=await updatePassword({password});
-    if(!result.error){
-      await signOut();
-      setDone(true);
-    } else {
+    if(result.error){
       setError(result.error.message||"Unable to update your password.");
+      setBusy(false);
+      return;
     }
+    await signOut();
     setBusy(false);
+    setDone(true);
+  };
+
+  const resend=async()=>{
+    setError("");
+    setBusy(true);
+    const result=await requestPasswordReset({email:email.trim().toLowerCase()});
+    setBusy(false);
+    if(result.error){setError(result.error.message||"Unable to resend the reset code.");return}
+    setCode("");
+    setStep("code");
   };
 
   return <main className="auth-page flames-page">
     <a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a>
     <section className={"auth-page-card recovery-card "+(done?"recovery-done":"")}>
       <div className="page-flame"><Flame/></div>
-      {checking
-        ? <><small className="auth-kicker">CHECKING LINK</small><h1>Opening secure reset.</h1><p>Please wait while we verify your password reset link.</p></>
-        : done
-          ? <><small className="auth-kicker">PASSWORD UPDATED</small><h1>You’re back in control.</h1><p>Your FLAMES password has been changed. Log in with your new password.</p><a className="auth-page-primary" href="/login">Log in ↗</a></>
-          : !ready
-            ? <><small className="auth-kicker">RESET LINK</small><h1>This link is no longer valid.</h1><p>Password reset links expire. Request a fresh one and use the newest email.</p><a className="auth-page-primary" href="/forgot-password">Request a new link</a><a className="auth-page-switch" href="/login">Back to log in</a></>
-            : <><small className="auth-kicker">CHOOSE A NEW PASSWORD</small><h1>Set a new password.</h1><p>Use a password you’ll remember or store safely in your password manager.</p><form onSubmit={submit}>
-              <label>New password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="New password (6+ characters)" autoComplete="new-password"/></label>
-              <label>Confirm password<input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Repeat your new password" autoComplete="new-password"/></label>
+      {done
+        ? <><small className="auth-kicker">PASSWORD UPDATED</small><h1>You’re back in control.</h1><p>Your FLAMES password has been changed. Log in with your new password.</p><a className="auth-page-primary" href="/login">Log in ↗</a></>
+        : step==="email"
+          ? <><small className="auth-kicker">PASSWORD RESET</small><h1>Forgot your password?</h1><p>Enter your FLAMES email and we’ll send a 6-digit reset code.</p><form onSubmit={sendCode}>
+              <label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label>
               {error&&<div className="auth-error">{error}</div>}
-              <button className="auth-page-primary" disabled={busy||password.length<6||confirm.length<6}>{busy?"Updating password…":"Update password"}</button>
-            </form><a className="auth-page-switch" href="/login">Back to log in</a></>}
+              <button className="auth-page-primary" disabled={busy||!email.trim()}>{busy?"Sending code…":"Send reset code"}</button>
+            </form><a className="auth-page-switch" href="/login">Back to log in</a></>
+          : step==="code"
+            ? <><small className="auth-kicker">VERIFY CODE</small><h1>Enter your reset code.</h1><p>We sent a 6-digit code to <strong>{email.trim()}</strong>. Enter it below to continue.</p><form onSubmit={verifyCode}>
+                <label>6-digit code<input className="recovery-code-input" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000000" maxLength={6}/></label>
+                {error&&<div className="auth-error">{error}</div>}
+                <button className="auth-page-primary" disabled={busy||code.replace(/\D/g,"").length!==6}>{busy?"Checking code…":"Verify code"}</button>
+              </form><div className="recovery-actions"><button type="button" onClick={resend} disabled={busy}>Send a new code</button><a href="/login">Back to log in</a></div></>
+            : <><small className="auth-kicker">CHOOSE A NEW PASSWORD</small><h1>Set a new password.</h1><p>Your code is verified. Choose a new password for your FLAMES account.</p><form onSubmit={changePassword}>
+                <label>New password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="New password (6+ characters)" autoComplete="new-password"/></label>
+                <label>Confirm password<input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)} placeholder="Repeat your new password" autoComplete="new-password"/></label>
+                {error&&<div className="auth-error">{error}</div>}
+                <button className="auth-page-primary" disabled={busy||password.length<6||confirm.length<6}>{busy?"Updating password…":"Update password"}</button>
+              </form><a className="auth-page-switch" href="/login">Back to log in</a></>}
     </section>
   </main>;
 }
+
+function ResetPasswordPage(){ return <ForgotPasswordPage/>; }
 
 function AuthModal({mode,onClose,onAuthed,success,successName}){
   const [kind,setKind]=useState(mode||"login");
