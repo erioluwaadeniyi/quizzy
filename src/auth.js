@@ -5,10 +5,15 @@ export async function getSessionUser(){
   return data?.user||null;
 }
 
-export async function createAccount({displayName,username,avatarId}){
-  return supabase.auth.signInAnonymously({
+export async function signUp({email,password,displayName,username,avatarId}){
+  return supabase.auth.signUp({
+    email,password,
     options:{data:{display_name:displayName,username,avatar_id:avatarId}}
   });
+}
+
+export async function signIn({email,password}){
+  return supabase.auth.signInWithPassword({email,password});
 }
 
 export async function signOut(){
