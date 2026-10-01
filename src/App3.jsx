@@ -175,7 +175,7 @@ function AppNav({profile,streak,view,setView,onLogout}){
     </nav>
     <div className="app-shell-actions">
       <span className="nav-streak"><Icon name="flame" size={17}/><b>{streak||0}</b><span>day streak</span></span>
-      <button type="button" className="nav-profile-button" aria-label="Open profile" onClick={()=>go("profile")}><Avatar profile={profile} size="sm"/></button>
+      <button type="button" className="nav-create-button" onClick={()=>go("create")}><Icon name="plus" size={16}/><span>Create</span></button><button type="button" className="nav-profile-button" aria-label="Open profile" onClick={()=>go("profile")}><Avatar profile={profile} size="sm"/></button>
     </div>
   </header>;
 }
@@ -197,7 +197,7 @@ function Dashboard({profile,savedCount,streak,recentMatches,setView}){
             <h1>Hey {first}. <em>Ready for another match?</em></h1>
             <p>“{quote}”</p>
           </div>
-          <button className="big-play-btn" type="button" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play FLAMES <Icon name="arrow" size={17}/></button>
+          <div className="hero-actions"><button className="big-play-btn" type="button" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play FLAMES <Icon name="arrow" size={17}/></button><button className="soft-play-btn" type="button" onClick={()=>setView("create")}><Icon name="plus" size={17}/> Create a question</button></div>
         </div>
 
         <section className="social-feed-card featured">
