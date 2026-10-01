@@ -150,6 +150,7 @@ function ForgotPasswordPage(){
     const result=await verifyRecoveryCode({email:email.trim().toLowerCase(),token:clean});
     setBusy(false);
     if(result.error){setError(result.error.message||"That reset code is invalid or expired.");return}
+    setResetToken(result.data?.resetToken||"");
     setCode(clean);
     setVerified(true);
     setStep("password");
