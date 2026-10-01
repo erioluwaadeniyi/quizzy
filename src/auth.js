@@ -5,10 +5,10 @@ export async function getSessionUser(){
   return data?.user||null;
 }
 
-export async function signUp({email,password,displayName,avatarId}){
+export async function signUp({email,password,displayName,username,avatarId}){
   return supabase.auth.signUp({
     email,password,
-    options:{data:{display_name:displayName,avatar_id:avatarId}}
+    options:{data:{display_name:displayName,username,avatar_id:avatarId}}
   });
 }
 
