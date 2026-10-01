@@ -20,14 +20,29 @@ export async function signOut(){
   return supabase.auth.signOut();
 }
 
+const PASSWORD_RESET_FUNCTION = SUPABASE_URL + "/functions/v1/flames-password-reset";
+
+async function passwordResetRequest(body){
+  try{
+    const r=await fetch(PASSWORD_RESET_FUNCTION,{
+      method:"POST",
+      headers:{apikey:SUPABASE_KEY,"Content-Type":"application/json"},
+      body:JSON.stringify(body)
+    });
+    const data=await r.json().catch(()=>({}));
+    if(!r.ok)return {data:null,error:{message:data.error||"Unable to complete the password reset."}};
+    return {data,error:null};
+  }catch(e){return {data:null,error:{message:e.message||"Network error."}}}
+}
+
 export async function requestPasswordReset({email}){
-  return supabase.auth.resetPasswordForEmail(email);
+  return passwordResetRequest({action:"request",email});
 }
 
 export async function verifyRecoveryCode({email,token}){
-  return supabase.auth.verifyOtp({email,token,type:"recovery"});
+  return passwordResetRequest({action:"verify",email,code:token});
 }
 
-export async function updatePassword({password}){
-  return supabase.auth.updateUser({password});
+export async function updatePassword({email,resetToken,password}){
+  return passwordResetRequest({action:"update",email,resetToken,password});
 }
