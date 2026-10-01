@@ -19,3 +19,11 @@ export async function signIn({email,password}){
 export async function signOut(){
   return supabase.auth.signOut();
 }
+
+export async function requestPasswordReset({email,redirectTo}){
+  return supabase.auth.resetPasswordForEmail(email, {redirectTo});
+}
+
+export async function updatePassword({password}){
+  return supabase.auth.updateUser({password});
+}
