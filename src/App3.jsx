@@ -160,151 +160,136 @@ function relativeTime(value){
   const hours=Math.floor(mins/60); if(hours<24)return hours+"h ago";
   const days=Math.floor(hours/24); return days+"d ago";
 }
-function Dashboard({user,profile,savedCount,streak,recentMatches,onPlay,onLogout}){
+const FLAMES_QUOTES=[
+  "Some matches are better as stories than statistics.",
+  "A little curiosity can turn an ordinary day into a FLAMES moment.",
+  "Today’s energy: ask the question you were too shy to ask.",
+  "Your streak is proof that you kept coming back for fun.",
+  "There is no pressure here. Just names, vibes and a little chaos."
+];
+
+function Icon({name,size=21,stroke=2}){
+  const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:stroke,strokeLinecap:"round",strokeLinejoin:"round",ariaHidden:true};
+  const paths={
+    home:<><path d="m3 10 9-7 9 7"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></>,
+    play:<><path d="M8 5v14l11-7L8 5Z"/></>,
+    history:<><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></>,
+    trophy:<><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4v2a4 4 0 0 0 4 4"/><path d="M17 6h3v2a4 4 0 0 1-4 4"/></>,
+    flame:<path d="M13 2c2.2 5.8-2.1 7.3-.4 10.1 1 1.7 2.7 1.7 3.6-.1 2.4 2 3.8 4.3 3.8 6.6 0 3.9-3.1 6.9-7 6.9s-7-3-7-6.9c0-3.4 1.9-6.4 4.8-8.9-.2 2.7.8 4.2 2 4.7-.5-4.6 1.9-7.2.2-12.4Z"/>,
+    spark:<><path d="m12 2 1.2 6.8L20 10l-6.8 1.2L12 18l-1.2-6.8L4 10l6.8-1.2L12 2Z"/><path d="m19 15 .6 2.4L22 18l-2.4.6L19 21l-.6-2.4L16 18l2.4-.6L19 15Z"/></>,
+    arrow:<><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></>,
+    lock:<><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,
+    user:<><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></>,
+    settings:<><path d="M12 3v2"/><path d="M12 19v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="m4.9 19.1 1.4-1.4"/><path d="m17.7 6.3 1.4 1.4"/><circle cx="12" cy="12" r="4"/></>,
+    check:<><path d="m5 12 4 4L19 6"/></>,
+    crown:<path d="m4 7 4 5 4-8 4 8 4-5-2 11H6L4 7Z"/>,
+    bolt:<path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/>,
+    users:<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2.5a4 4 0 0 0-3-3.8"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></>,
+    plus:<><path d="M12 5v14"/><path d="M5 12h14"/></>,
+  };
+  return <svg {...p}>{paths[name]||paths.spark}</svg>;
+}
+
+function Avatar({profile,size="md"}){
+  const seed=Number(profile?.avatar_id)||1;
+  const initials=(profile?.display_name||"F").split(/\\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+  return <div className={"flames-avatar flames-avatar-"+size+" avatar-theme-"+(((seed-1)%12)+1)} aria-hidden="true"><span>{initials}</span><i/></div>;
+}
+function relativeTime(value){const diff=Math.max(0,Date.now()-new Date(value).getTime());const mins=Math.floor(diff/60000);if(mins<1)return "just now";if(mins<60)return mins+"m ago";const hours=Math.floor(mins/60);if(hours<24)return hours+"h ago";const days=Math.floor(hours/24);return days+"d ago";}
+function resultCounts(matches){return matches.reduce((acc,m)=>{acc[m.result_key]=(acc[m.result_key]||0)+1;return acc},{});}
+
+function AppNav({profile,streak,view,setView,onLogout}){
+  return <header className="app-shell-nav">
+    <button className="app-shell-brand" onClick={()=>setView("dashboard")}><span className="app-shell-logo"><Flame/></span><span>FLAMES</span></button>
+    <nav className="app-shell-mainnav">
+      {[["dashboard","Home","home"],["game","Play","play"],["history","History","history"],["circle","Private Circle","users"],["achievements","Achievements","trophy"]].map(([v,label,icon])=><button key={v} className={view===v?"active":""} onClick={()=>setView(v)}><Icon name={icon} size={19}/><span>{label}</span></button>)}
+    </nav>
+    <div className="app-shell-actions"><span className="nav-streak"><Icon name="flame" size={17}/><b>{streak}</b> day streak</span><button className="nav-profile-button" onClick={()=>setView("profile")}><Avatar profile={profile} size="sm"/></button></div>
+  </header>;
+}
+
+function Dashboard({profile,savedCount,streak,recentMatches,setView}){
   const quote=FLAMES_QUOTES[(new Date().getDate()+savedCount)%FLAMES_QUOTES.length];
-  const first=(profile?.display_name||"FLAMES Friend").split(" ")[0];
-  const resultCounts=recentMatches.reduce((acc,m)=>{acc[m.result_key]=(acc[m.result_key]||0)+1;return acc},{});
-  const topKey=Object.keys(resultCounts).sort((x,y)=>(resultCounts[y]||0)-(resultCounts[x]||0))[0];
-  const topResult=topKey?RESULTS[topKey]:null;
-  const achievements=[
-    {icon:"play",title:"First flame",text:savedCount>0?"You completed your first match.":"Play your first match.",done:savedCount>0},
-    {icon:"bolt",title:"Keep the fire",text:streak>=3?"3-day streak unlocked.":streak===2?"One more day for a 3-day streak.":"Start a streak.",done:streak>=3},
-    {icon:"trophy",title:"Regular",text:savedCount>=5?"5 saved matches reached.":savedCount+" / 5 saved matches.",done:savedCount>=5},
-    {icon:"crown",title:"FLAMES legend",text:savedCount>=10?"10 saved matches reached.":savedCount+" / 10 saved matches.",done:savedCount>=10}
-  ];
-  return <main className="dashboard-page">
-    <div className="dashboard-bg dashboard-bg-a"/><div className="dashboard-bg dashboard-bg-b"/>
-    <header className="dashboard-nav">
-      <button className="dashboard-brand" onClick={onPlay}><span className="dashboard-brand-mark"><Flame/></span><span>FLAMES</span></button>
-      <nav><button className="active"><Icon name="home"/>Home</button><button onClick={onPlay}><Icon name="play"/>Play</button><button><Icon name="history"/>History</button></nav>
-      <div className="dashboard-nav-right"><span className="dashboard-streak"><Icon name="flame" size={16}/> {streak} day streak</span><button className="dashboard-avatar" aria-label="Account"><Icon name="user" size={17}/></button></div>
-    </header>
-    <section className="dashboard-layout">
-      <aside className="dashboard-sidebar">
-        <div className="profile-card">
-          <div className="profile-avatar"><Icon name="user" size={24}/></div><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div>
-          <span className="profile-live"><i/></span>
+  const first=(profile?.display_name||"Friend").split(" ")[0];
+  const counts=resultCounts(recentMatches);
+  const topKey=Object.keys(counts).sort((x,y)=>(counts[y]||0)-(counts[x]||0))[0];
+  const top=topKey?RESULTS[topKey]:null;
+  return <main className="social-page">
+    <div className="social-orb orb-a"/><div className="social-orb orb-b"/>
+    <AppNav profile={profile} streak={streak} view="dashboard" setView={setView}/>
+    <div className="social-layout">
+      <aside className="social-left">
+        <div className="mini-profile-card"><Avatar profile={profile} size="lg"/><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div><span className="online-dot"/></div>
+        <div className="side-nav-group">
+          {[["dashboard","Your space","home"],["game","Play FLAMES","play"],["history","Your matches","history"],["circle","Private Circle","users"],["achievements","Achievements","trophy"],["profile","Profile","user"],["settings","Settings","settings"]].map(([v,l,ic])=><button key={v} className={v==="dashboard"?"selected":""} onClick={()=>setView(v)}><Icon name={ic}/><span>{l}</span></button>)}
         </div>
-        <button className="side-item active"><Icon name="home"/>Overview</button>
-        <button className="side-item" onClick={onPlay}><Icon name="play"/>Play FLAMES</button>
-        <button className="side-item"><Icon name="history"/>Your matches <b>{savedCount}</b></button>
-        <button className="side-item"><Icon name="trophy"/>Achievements</button>
-        <div className="sidebar-divider"/>
-        <div className="sidebar-mini"><span className="sidebar-mini-icon"><Icon name="spark" size={15}/></span><div><strong>Just for fun</strong><small>No pressure. No serious science.</small></div></div>
-        <button className="side-logout" onClick={onLogout}><Icon name="lock" size={16}/>Log out</button>
+        <div className="side-fun-card"><div className="side-fun-icon"><Icon name="spark" size={20}/></div><div><strong>Just for fun</strong><p>No pressure. No awkward scoring. Just FLAMES.</p></div></div>
       </aside>
-
-      <div className="dashboard-main">
-        <div className="dashboard-welcome">
-          <div><small>YOUR FLAMES SPACE</small><h1>Hey {first}. <em>What are we testing today?</em></h1><p>{quote}</p></div>
-          <button className="dashboard-play" onClick={onPlay}><Icon name="play" size={17}/> Play a match <Icon name="arrow" size={16}/></button>
+      <section className="social-main">
+        <div className="social-hero">
+          <div><span className="eyebrow">WELCOME TO YOUR FLAMES</span><h1>Hey {first}. <em>What are we testing today?</em></h1><p>“{quote}”</p></div>
+          <button className="big-play-btn" onClick={()=>setView("game")}><Icon name="play" size={19}/> Play a match <Icon name="arrow" size={18}/></button>
         </div>
-        <div className="dashboard-grid">
-          <section className="feed-column">
-            <article className="feed-card featured-card">
-              <div className="feed-card-top"><span className="feed-label"><Icon name="flame" size={14}/> TODAY'S VIBE</span><span>{new Date().toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</span></div>
-              <div className="vibe-core"><div className="vibe-flame"><Flame/></div><div><h2>Keep the fire curious.</h2><p>There is always another name pair, another ridiculous result, another reason to laugh.</p></div></div>
-              <div className="quote-strip">“{quote}”</div>
-            </article>
-
-            <article className="feed-card">
-              <div className="feed-card-top"><span className="feed-label"><Icon name="history" size={14}/> RECENT ACTIVITY</span><button onClick={onPlay}>New match <Icon name="arrow" size={14}/></button></div>
-              {recentMatches.length?<div className="match-feed">{recentMatches.slice(0,6).map(m=><div className="match-row" key={m.id}><div className={"match-result result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div><div className="match-copy"><strong>{m.name_a} <span>×</span> {m.secret_mode?"Secret Crush":m.name_b}</strong><small>{relativeTime(m.created_at)} · {RESULTS[m.result_key]?.name||"FLAMES result"}</small></div><div className="match-percent">{m.percent}%</div></div>)}</div>:<div className="empty-feed"><div className="empty-icon"><Icon name="spark"/></div><strong>Your FLAMES feed is empty.</strong><p>Your first match becomes the first memory here.</p><button onClick={onPlay}>Make your first match <Icon name="arrow" size={15}/></button></div>}
-            </article>
+        <div className="story-strip">
+          <div className="story-card story-fire"><span className="story-icon"><Icon name="flame" size={22}/></span><div><b>{streak||0} day streak</b><small>{streak>1?"You are on a roll.":"Play again tomorrow to keep it going."}</small></div></div>
+          <div className="story-card"><span className="story-icon warm"><Icon name="trophy" size={22}/></span><div><b>{savedCount} saved matches</b><small>{savedCount?"Your little FLAMES history is growing.":"Your first match is waiting."}</small></div></div>
+          <div className="story-card"><span className="story-icon purple"><Icon name="spark" size={22}/></span><div><b>{top?top.name:"New energy"}</b><small>{top?counts[topKey]+" times in your saved history.":"Play a few matches and discover your pattern."}</small></div></div>
+        </div>
+        <div className="social-grid">
+          <section className="social-feed-card featured">
+            <div className="feed-head"><div><span>YOUR DAILY FLAME</span><h2>Keep the fire curious.</h2></div><span className="live-chip"><i/>Today</span></div>
+            <p className="feature-copy">There is always another name pair, another ridiculous result, another reason to laugh.</p>
+            <div className="quote-bubble">“{quote}”</div>
+            <div className="feature-actions"><button onClick={()=>setView("game")}><Icon name="play" size={17}/> Test another pair</button><button className="quiet-action" onClick={()=>setView("circle")}><Icon name="users" size={17}/> See your Circle</button></div>
           </section>
-
-          <aside className="dashboard-right">
-            <section className="stat-card streak-card"><div className="stat-icon"><Icon name="flame"/></div><div><small>CURRENT STREAK</small><strong>{streak} <span>days</span></strong><p>{streak>0?"The fire is still on.":"Play today to light it up."}</p></div></section>
-            <section className="stat-card"><div className="stat-icon dark"><Icon name="trophy"/></div><div><small>SAVED MATCHES</small><strong>{savedCount}</strong><p>Every saved result stays with you.</p></div></section>
-            <section className="record-card"><div className="record-head"><small>YOUR RECORD</small><Icon name="crown" size={18}/></div>{topResult?<><div className="record-big">{topResult.emoji}</div><strong>Most common outcome: {topResult.name}</strong><span>{resultCounts[topKey]} of your recent saved matches</span></>:<><div className="record-big muted"><Icon name="spark"/></div><strong>No record yet</strong><span>Your match history will build this.</span></>}</section>
-            <section className="achievements-card"><div className="record-head"><small>ACHIEVEMENTS</small><Icon name="trophy" size={18}/></div>{achievements.map(a=><div className={"achievement "+(a.done?"done":"")} key={a.title}><span className="achievement-icon"><Icon name={a.icon} size={15}/></span><div><strong>{a.title}</strong><small>{a.text}</small></div>{a.done&&<Icon name="check" size={15}/>}</div>)}</section>
-          </aside>
+          <section className="social-feed-card">
+            <div className="feed-head"><div><span>RECENT FLAMES</span><h3>Your latest moments</h3></div><button className="text-link" onClick={()=>setView("history")}>See all <Icon name="arrow" size={15}/></button></div>
+            {recentMatches.length?<div className="match-list">{recentMatches.slice(0,5).map(m=><div className="match-item" key={m.id}><div className={"match-orb result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div><div><strong>{m.name_a} <i>×</i> {m.secret_mode?"Secret Crush":m.name_b}</strong><small>{RESULTS[m.result_key]?.name||"FLAMES"} · {relativeTime(m.created_at)}</small></div><b>{m.percent}%</b></div>)}</div>:<div className="empty-space"><Icon name="spark" size={26}/><strong>Nothing here yet.</strong><p>Your next match will become your first little memory.</p><button onClick={()=>setView("game")}>Make your first match <Icon name="arrow" size={15}/></button></div>}
+          </section>
         </div>
-      </div>
-    </section>
+      </section>
+      <aside className="social-right">
+        <section className="highlight-card"><div className="highlight-icon"><Icon name="crown" size={22}/></div><span>YOUR RECORD</span><h3>{top?top.name:"Still loading"}</h3><p>{top?counts[topKey]+" saved results":"Your record starts with your first saved match."}</p></section>
+        <section className="progress-card"><div className="progress-top"><span>YOUR NEXT UNLOCK</span><b>{Math.min(savedCount,5)}/5</b></div><h3>{savedCount>=5?"FLAMES Regular":"Save 5 matches"}</h3><div className="progress-bar"><i style={{width:Math.min(savedCount*20,100)+"%"}}/></div><p>{savedCount>=5?"You unlocked a real milestone.":"Keep playing and your profile gets more interesting."}</p></section>
+        <section className="fun-quote-card"><Icon name="spark" size={19}/><span>ONE MORE THING</span><p>{FLAMES_QUOTES[(new Date().getDay()+streak)%FLAMES_QUOTES.length]}</p></section>
+      </aside>
+    </div>
   </main>;
 }
 
-function AuthModal({mode,onClose,onAuthed,success,successName}){
-  const [kind,setKind]=useState(mode||"login");
-  const [name,setName]=useState("");
-  const [username,setUsername]=useState("");
-  const [email,setEmail]=useState("");
-  const [password,setPassword]=useState("");
-  const [busy,setBusy]=useState(false);
-  const [error,setError]=useState("");
-  const [usernameState,setUsernameState]=useState("idle");
-  const [usernameMessage,setUsernameMessage]=useState("");
+function HistoryPage({profile,streak,recentMatches,setView}){
+ return <main className="social-page"><AppNav profile={profile} streak={streak} view="history" setView={setView}/><div className="content-page"><div className="page-intro"><span className="eyebrow">YOUR HISTORY</span><h1>Every match has a little story.</h1><p>Your saved FLAMES results, newest first.</p></div><section className="large-card">{recentMatches.length?<div className="history-grid">{recentMatches.map(m=><article className="history-item" key={m.id}><div className={"history-letter result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div><div className="history-copy"><strong>{m.name_a} <i>×</i> {m.secret_mode?"Secret Crush":m.name_b}</strong><span>{RESULTS[m.result_key]?.name||"FLAMES"} · {m.percent}% · {relativeTime(m.created_at)}</span><p>{m.message}</p></div></article>)}</div>:<div className="large-empty"><Icon name="history" size={32}/><h3>No saved matches yet.</h3><p>Play a match and it will show up here.</p><button className="big-play-btn" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play now</button></div>}</section></div></main>;
+}
 
-  useEffect(()=>{
-    if(kind!=="signup"){setUsernameState("idle");setUsernameMessage("");return}
-    const q=username.trim().toLowerCase();
-    if(!q){setUsernameState("idle");setUsernameMessage("");return}
-    if(q.length<3){setUsernameState("error");setUsernameMessage("Username must be at least 3 characters.");return}
-    let cancelled=false;
-    const timer=setTimeout(async()=>{
-      setUsernameState("checking");setUsernameMessage("Checking username…");
-      const {data,error:e}=await supabase.from("flames_profiles").select("id").eq("username",q).limit(1);
-      if(cancelled)return;
-      if(e){setUsernameState("idle");setUsernameMessage("");return}
-      if(data?.length){setUsernameState("error");setUsernameMessage("That username is already taken.");}
-      else{setUsernameState("success");setUsernameMessage("Username is available.");}
-    },300);
-    return()=>{cancelled=true;clearTimeout(timer)}
-  },[username,kind]);
+function AchievementsPage({profile,streak,recentMatches,savedCount,setView}){
+ const counts=resultCounts(recentMatches);
+ const items=[
+   {icon:"play",title:"First Flame",desc:"Complete your first saved match.",done:savedCount>=1,progress:Math.min(savedCount,1)},
+   {icon:"bolt",title:"Three days hot",desc:"Keep a 3-day FLAMES streak.",done:streak>=3,progress:Math.min(streak,3)},
+   {icon:"trophy",title:"FLAMES Regular",desc:"Save five matches.",done:savedCount>=5,progress:Math.min(savedCount,5)},
+   {icon:"crown",title:"Known around FLAMES",desc:"Save ten matches.",done:savedCount>=10,progress:Math.min(savedCount,10)}
+ ];
+ const firstResult=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0];
+ return <main className="social-page"><AppNav profile={profile} streak={streak} view="achievements" setView={setView}/><div className="content-page"><div className="page-intro"><span className="eyebrow">ACHIEVEMENTS & RECORDS</span><h1>Make the little moments count.</h1><p>Real milestones from how you use FLAMES.</p></div><div className="records-grid"><section className="record-hero-card"><span>YOUR CURRENT RUN</span><strong>{streak}<small>days</small></strong><p>{streak?"Keep the flame going.":"Play today to light it up."}</p></section><section className="record-hero-card warm-record"><span>SAVED MOMENTS</span><strong>{savedCount}</strong><p>{firstResult?"Your most common result is "+RESULTS[firstResult].name+".":"Your record begins with your first saved match."}</p></section><section className="record-hero-card purple-record"><span>FLAMES PERSONALITY</span><strong>{firstResult?RESULTS[firstResult].emoji:"✦"}</strong><p>{firstResult?RESULTS[firstResult].name+" energy keeps showing up.":"Let the history reveal it."}</p></section></div><section className="large-card achievement-list">{items.map(a=><div className={"achievement-row "+(a.done?"complete":"")} key={a.title}><div className="achievement-badge"><Icon name={a.icon} size={21}/></div><div><h3>{a.title}</h3><p>{a.desc}</p></div><div className="achievement-progress"><span>{a.done?"Unlocked":a.progress+"/ "+(a.title==="Three days hot"?3:a.title==="First Flame"?1:a.title.includes("Regular")?5:10)}</span><div><i style={{width:((a.done?1:a.progress/(a.title==="Three days hot"?3:a.title==="First Flame"?1:a.title.includes("Regular")?5:10))*100)+"%"}}/></div></div>{a.done&&<Icon name="check" size={19}/>}</div>)}</section></div></main>;
+}
 
-  const submit=async e=>{
-    e.preventDefault();setError("");
-    if(kind==="signup"){
-      if(!name.trim()){setError("Enter your full name.");return}
-      if(usernameState!=="success"){setError("Choose an available username.");return}
-      if(!/^\S+@\S+\.\S+$/.test(email.trim())){setError("Enter a valid email address.");return}
-    }
-    setBusy(true);
-    const r=kind==="login"?await signIn({email,password}):await signUp({email,password,displayName:name.trim(),username:username.trim().toLowerCase()});
-    setBusy(false);
-    if(r.error){setError(r.error.message||"Could not complete that request.");return}
-    if(kind==="signup"&&!r.data?.session){setError("Your account was created, but email confirmation is still enabled. Disable Confirm email in Supabase to enter immediately.");return}
-    onAuthed(r.data?.user||null);
-  };
+function ProfilePage({profile,streak,savedCount,recentMatches,setView,onLogout}){
+ return <main className="social-page"><AppNav profile={profile} streak={streak} view="profile" setView={setView}/><div className="content-page profile-page-content"><section className="profile-hero"><div className="profile-hero-top"><Avatar profile={profile} size="xl"/><div><span className="eyebrow">YOUR FLAMES PROFILE</span><h1>{profile?.display_name||"FLAMES Friend"}</h1><p>@{profile?.username||"flames"}</p></div><button onClick={()=>setView("settings")}><Icon name="settings" size={18}/> Settings</button></div><div className="profile-stats"><div><b>{savedCount}</b><span>saved matches</span></div><div><b>{streak}</b><span>day streak</span></div><div><b>{recentMatches.length?RESULTS[recentMatches[0].result_key]?.name:"—"}</b><span>latest result</span></div></div></section><section className="large-card profile-note"><Icon name="spark" size={22}/><div><h3>Keep it playful.</h3><p>Your FLAMES identity is yours, your results stay private to your account, and every number here comes from your own play.</p></div></section></div></main>;
+}
 
-  if(success)return <div className="auth-backdrop"><div className="flames-auth-success">
-    <div className="success-orbit"><span>F</span><span>L</span><span>A</span><span>M</span><span>E</span><span>S</span><div className="success-fire"><Flame/></div></div>
-    <div className="auth-kicker">YOU'RE IN</div>
-    <h2>Welcome to your FLAMES.</h2>
-    <p>{successName||"Your account"} is now connected. Your future results can stay with you instead of disappearing after the game.</p>
-    <div className="unlock-grid">
-      <div><b>🔥</b><strong>Save results</strong><span>Your FLAMES matches stay attached to your account.</span></div>
-      <div><b>⚡</b><strong>Build a streak</strong><span>Keep playing and your FLAMES streak grows.</span></div>
-      <div><b>✨</b><strong>Keep your identity</strong><span>Your FLAMES username stays yours across sessions.</span></div>
-    </div>
-    <button className="auth-primary" onClick={onClose}>Keep playing</button>
-  </div></div>;
+function SettingsPage({profile,streak,setView,onLogout}){
+ return <main className="social-page"><AppNav profile={profile} streak={streak} view="settings" setView={setView}/><div className="content-page"><div className="page-intro"><span className="eyebrow">SETTINGS</span><h1>Your space, your rules.</h1><p>Simple account controls. Nothing noisy.</p></div><section className="large-card settings-list"><button onClick={()=>setView("profile")}><Icon name="user"/><div><strong>Profile</strong><span>View your FLAMES identity and stats.</span></div><Icon name="arrow" size={18}/></button><button onClick={()=>setView("circle")}><Icon name="users"/><div><strong>Private Circle</strong><span>Manage people you have connected with.</span></div><Icon name="arrow" size={18}/></button><button className="danger" onClick={onLogout}><Icon name="lock"/><div><strong>Log out</strong><span>End this session on this device.</span></div><Icon name="arrow" size={18}/></button></section></div></main>;
+}
 
-  return <div className="auth-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
-    <div className="flames-auth-modal">
-      <button className="auth-close" type="button" onClick={onClose}>×</button>
-      <div className="auth-flame-mark"><Flame/></div>
-      <div className="auth-kicker">{kind==="login"?"WELCOME BACK":"JOIN FLAMES"}</div>
-      <h2>{kind==="login"?"Come back to your FLAMES.":"Create your FLAMES account."}</h2>
-      <p>{kind==="login"?"Your game stays free. Your account keeps the things you build.":"One small account. More FLAMES to keep."}</p>
-      {kind==="signup"&&<div className="signup-unlock">
-        <small>UNLOCK WITH AN ACCOUNT</small>
-        <div className="unlock-row"><span>🔥</span><div><strong>Save every result</strong><em>Never lose a FLAMES match you want to remember.</em></div></div>
-        <div className="unlock-row"><span>⚡</span><div><strong>Keep your streak alive</strong><em>Your play builds a personal FLAMES streak.</em></div></div>
-        <div className="unlock-row"><span>✨</span><div><strong>Have your own FLAMES identity</strong><em>Your unique @username stays connected to your account.</em></div></div>
-      </div>}
-      {kind==="signup"&&<>
-        <label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Alex Johnson" autoComplete="name"/><small className="auth-hint">Full names can be identical.</small></label>
-        <label>FLAMES username<div className="username-field"><span className="username-prefix">@</span><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="e.g. alexjohnson" autoComplete="username"/></div>{usernameMessage&&<small className={"field-status "+usernameState}>{usernameMessage}</small>}</label>
-      </>}
-      <label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="e.g. alex@gmail.com" autoComplete="email"/></label>
-      <label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder={kind==="login"?"Enter your password":"Create a password (6+ characters)"} autoComplete={kind==="login"?"current-password":"new-password"}/></label>
-      {error&&<div className="auth-error">{error}</div>}
-      <button className="auth-primary" disabled={busy||!email||password.length<6||(kind==="signup"&&usernameState!=="success")} onClick={submit}>{busy?"Please wait…":kind==="login"?"Log in":"Create account"}</button>
-      <button type="button" className="auth-switch" onClick={()=>{setKind(kind==="login"?"signup":"login");setError("")}}>{kind==="login"?"New to FLAMES? Create an account":"Already have an account? Log in"}</button>
-    </div>
-  </div>
+function CirclePage({profile,streak,user,setView}){
+ const [query,setQuery]=useState(""),[searching,setSearching]=useState(false),[results,setResults]=useState([]),[connections,setConnections]=useState([]),[profiles,setProfiles]=useState({}),[busy,setBusy]=useState(null),[notice,setNotice]=useState("");
+ const load=async()=>{const [a,b]=await Promise.all([supabase.from("flames_connections").select("*").eq("requester_id",user.id),supabase.from("flames_connections").select("*").eq("addressee_id",user.id)]);const rows=[...(a.data||[]),...(b.data||[])].filter((r,i,arr)=>arr.findIndex(x=>x.id===r.id)===i);setConnections(rows);const ids=[...new Set(rows.map(r=>r.requester_id===user.id?r.addressee_id:r.requester_id))];if(ids.length){const p=await supabase.from("flames_profiles").select("*").in("id",ids).limit(50);const map={};(p.data||[]).forEach(x=>map[x.id]=x);setProfiles(map)}};
+ useEffect(()=>{load()},[user.id]);
+ const findPeople=async e=>{e?.preventDefault();setNotice("");const q=query.trim().toLowerCase();if(q.length<2){setResults([]);return}setSearching(true);const r=await supabase.from("flames_profiles").select("*").ilike("username",q+"%").limit(8);setSearching(false);setResults((r.data||[]).filter(x=>x.id!==user.id))};
+ const send=async person=>{setBusy(person.id);setNotice("");const r=await supabase.from("flames_connections").insert({requester_id:user.id,addressee_id:person.id,status:"pending"}).select().single();setBusy(null);if(r.error){setNotice("That connection could not be created. They may already be in your Circle.");return}setNotice("Connection request sent to @"+person.username+".");setResults([]);await load()};
+ const respond=async(conn,status)=>{setBusy(conn.id);const r=await supabase.from("flames_connections").update({status}).eq("id",conn.id).select().single();setBusy(null);if(r.error){setNotice("We couldn't update that request.");return}await load()};
+ const accepted=connections.filter(x=>x.status==="accepted"),incoming=connections.filter(x=>x.status==="pending"&&x.addressee_id===user.id),outgoing=connections.filter(x=>x.status==="pending"&&x.requester_id===user.id);
+ return <main className="social-page"><AppNav profile={profile} streak={streak} view="circle" setView={setView}/><div className="content-page"><div className="page-intro circle-intro"><span className="eyebrow">PRIVATE CIRCLE</span><h1>Your people, kept close.</h1><p>Connect with FLAMES people you trust. Circle connections are only visible to the people in them.</p></div><section className="circle-search-card"><form onSubmit={findPeople}><div><Icon name="users" size={20}/><input value={query} onChange={e=>setQuery(e.target.value.replace(/[^a-z0-9_]/gi,"").slice(0,20))} placeholder="Find someone by @username"/></div><button className="big-play-btn">{searching?"Searching…":"Find them"}</button></form>{notice&&<p className="circle-notice">{notice}</p>}{results.length>0&&<div className="circle-results">{results.map(p=><div className="person-result" key={p.id}><Avatar profile={p} size="md"/><div><strong>{p.display_name}</strong><span>@{p.username}</span></div><button onClick={()=>send(p)} disabled={busy===p.id}><Icon name="plus" size={16}/>{busy===p.id?"Sending":"Add to Circle"}</button></div>)}</div>}</section><div className="circle-columns"><section className="large-card"><div className="section-head"><div><span>YOUR CIRCLE</span><h2>The people you keep close</h2></div><span className="count-pill">{accepted.length}</span></div>{accepted.length?<div className="circle-people">{accepted.map(c=>{const id=c.requester_id===user.id?c.addressee_id:c.requester_id;const p=profiles[id];return <div className="circle-person" key={c.id}><Avatar profile={p} size="md"/><div><strong>{p?.display_name||"FLAMES Friend"}</strong><span>@{p?.username||"flames"}</span></div><Icon name="check" size={17}/></div>})}</div>:<div className="large-empty"><Icon name="users" size={30}/><h3>Your Circle is empty.</h3><p>Find someone by username and send the first connection.</p></div>}</section><section className="large-card pending-card"><div className="section-head"><div><span>REQUESTS</span><h2>Waiting for you</h2></div><span className="count-pill">{incoming.length}</span></div>{incoming.length?incoming.map(c=>{const p=profiles[c.requester_id];return <div className="request-row" key={c.id}><Avatar profile={p} size="sm"/><div><strong>{p?.display_name||"FLAMES Friend"}</strong><span>@{p?.username||"flames"}</span></div><div className="request-actions"><button onClick={()=>respond(c,"accepted")} disabled={busy===c.id}>Accept</button><button onClick={()=>respond(c,"rejected")} disabled={busy===c.id}>Pass</button></div></div>}):<div className="pending-empty">No requests waiting.</div>}{outgoing.length>0&&<div className="outgoing-note">{outgoing.length} outgoing request{outgoing.length>1?"s":""} waiting.</div>}</section></div></div></main>;
 }
 
 export default function App(){
@@ -314,7 +299,7 @@ export default function App(){
   if(authPath==="/forgot-password") return <ForgotPasswordPage/>;
   if(authPath==="/reset-password") return <ResetPasswordPage/>;
   const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[recentMatches,setRecentMatches]=useState([]),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[view,setView]=useState("dashboard"),[authReady,setAuthReady]=useState(false),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
-  const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(100)]);setProfile(p||null);setRecentMatches(m||[]);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
+  const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(100)]);let account=p||null;if(account&&(!Number.isInteger(account.avatar_id)||account.avatar_id<1||account.avatar_id>24)){const avatarId=(Array.from(u.id).reduce((n,ch)=>n+ch.charCodeAt(0),0)%24)+1;const {data:updated}=await supabase.from("flames_profiles").update({avatar_id:avatarId,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();account=updated||account}setProfile(account);setRecentMatches(m||[]);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
   useEffect(()=>{let active=true;(async()=>{const {data}=await supabase.auth.getUser();if(!active)return;const u=data?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setRecentMatches([]);setSavedCount(0);setStreak(0)}if(active)setAuthReady(true)})();const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{if(!active)return;const u=session?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setRecentMatches([]);setSavedCount(0);setStreak(0)}setAuthReady(true)});return()=>{active=false;sub.subscription.unsubscribe()}},[]);
   const openAuth=mode=>{setAuthMode(mode);setAuthSuccess(false);setAuthOpen(true)};
   const finishAuth=async()=>{const {data}=await supabase.auth.getUser();if(data?.user){setUser(data.user);await loadAccount(data.user);setAuthSuccessName(data.user.user_metadata?.display_name||"FLAMES Friend");setAuthSuccess(true)}};
@@ -325,7 +310,12 @@ export default function App(){
   const pct=useMemo(()=>key?score(a,b):0,[a,b,key]);
   const displayPair=secretMode?a.trim()+" × Secret Crush":a.trim()+" × "+b.trim();
   if(!authReady)return <main className="dashboard-boot"><div className="dashboard-brand-mark"><Flame/></div><span>Loading your FLAMES…</span></main>;
-  if(user&&view==="dashboard"&&!key&&!loading)return <Dashboard user={user} profile={profile} savedCount={savedCount} streak={streak} recentMatches={recentMatches} onPlay={()=>setView("game")} onLogout={handleLogout}/>;
+  if(user&&!key&&!loading&&view==="dashboard")return <Dashboard profile={profile} savedCount={savedCount} streak={streak} recentMatches={recentMatches} setView={setView}/>;
+  if(user&&!key&&!loading&&view==="history")return <HistoryPage profile={profile} streak={streak} recentMatches={recentMatches} setView={setView}/>;
+  if(user&&!key&&!loading&&view==="achievements")return <AchievementsPage profile={profile} streak={streak} recentMatches={recentMatches} savedCount={savedCount} setView={setView}/>;
+  if(user&&!key&&!loading&&view==="profile")return <ProfilePage profile={profile} streak={streak} savedCount={savedCount} recentMatches={recentMatches} setView={setView} onLogout={handleLogout}/>;
+  if(user&&!key&&!loading&&view==="settings")return <SettingsPage profile={profile} streak={streak} setView={setView} onLogout={handleLogout}/>;
+  if(user&&!key&&!loading&&view==="circle")return <CirclePage profile={profile} streak={streak} user={user} setView={setView}/>;
 
   const start=e=>{e.preventDefault();if(!a.trim()||!b.trim()||loading)return;trackEvent("match_started",{mode:secretMode?"secret_crush":"classic"});setLoading(true);setKey(null);setCopied(false);setDownloaded(false);setNudgeDismissed(false);window.setTimeout(async()=>{const k=flames(a,b);const list=RESULTS[k].messages;const qi=(a.length+b.length+Date.now())%list.length;setQuipIndex(qi);setKey(k);setLoading(false);trackEvent("match_completed",{mode:secretMode?"secret_crush":"classic",result:k});await saveMatch(k,list[qi])},1700)};
   const reset=()=>{setKey(null);setLoading(false);setCopied(false);setDownloaded(false)};
