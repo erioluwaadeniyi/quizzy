@@ -127,6 +127,104 @@ function ForgotPasswordPage(){
   return <main className="auth-page flames-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className={"auth-page-card recovery-card "+(done?"recovery-done":"")}><div className="page-flame"><Flame/></div>{done?<><small className="auth-kicker">PASSWORD UPDATED</small><h1>You’re back in control.</h1><p>Your FLAMES password has been changed. Log in with your new password.</p><a className="auth-page-primary" href="/login">Log in ↗</a></>:step==="email"?<><small className="auth-kicker">PASSWORD RESET</small><h1>Forgot your password?</h1><p>Enter your FLAMES email and we’ll send a 6-digit reset code.</p><form onSubmit={sendCode}><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} /></label>{error&&<div className="auth-error">{error}</div>}<button className="auth-page-primary" disabled={busy||!email.trim()}>{busy?"Sending code…":"Send reset code"}</button></form><a className="auth-page-switch" href="/login">Back to log in</a></>:step==="code"?<><small className="auth-kicker">VERIFY CODE</small><h1>Enter your reset code.</h1><p>We sent a 6-digit code to <strong>{email.trim()}</strong>.</p><form onSubmit={verifyCode}><label>6-digit code<input className="recovery-code-input" inputMode="numeric" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} maxLength={6}/></label>{error&&<div className="auth-error">{error}</div>}<button className="auth-page-primary" disabled={busy||code.length!==6}>{busy?"Checking code…":"Verify code"}</button></form><div className="recovery-actions"><button type="button" onClick={resend}>Send a new code</button><a href="/login">Back to log in</a></div></>:<><small className="auth-kicker">CHOOSE A NEW PASSWORD</small><h1>Set a new password.</h1><form onSubmit={changePassword}><label>New password<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><label>Confirm password<input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label>{error&&<div className="auth-error">{error}</div>}<button className="auth-page-primary" disabled={busy||password.length<6||confirm.length<6}>{busy?"Updating password…":"Update password"}</button></form><a className="auth-page-switch" href="/login">Back to log in</a></>}</section></main>;
 }
 function ResetPasswordPage(){return <ForgotPasswordPage/>;}
+const FLAMES_QUOTES=[
+  "Some matches are better as stories than statistics.",
+  "A little curiosity can turn an ordinary day into a FLAMES moment.",
+  "Today’s energy: ask the question you were too shy to ask.",
+  "Your streak is proof that you kept coming back for fun.",
+  "There is no pressure here. Just names, vibes and a little chaos."
+];
+function Icon({name,size=20,stroke=1.9}){
+  const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:stroke,strokeLinecap:"round",strokeLinejoin:"round",ariaHidden:true};
+  const paths={
+    home:<><path d="m3 10 9-7 9 7"/><path d="M5 9.5V21h14V9.5"/><path d="M9 21v-6h6v6"/></>,
+    play:<><path d="M8 5v14l11-7L8 5Z"/></>,
+    history:<><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></>,
+    trophy:<><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0Z"/><path d="M7 6H4v2a4 4 0 0 0 4 4"/><path d="M17 6h3v2a4 4 0 0 1-4 4"/></>,
+    flame:<path d="M13 2c2.2 5.8-2.1 7.3-.4 10.1 1 1.7 2.7 1.7 3.6-.1 2.4 2 3.8 4.3 3.8 6.6 0 3.9-3.1 6.9-7 6.9s-7-3-7-6.9c0-3.4 1.9-6.4 4.8-8.9-.2 2.7.8 4.2 2 4.7-.5-4.6 1.9-7.2.2-12.4Z"/>,
+    spark:<><path d="m12 2 1.2 6.8L20 10l-6.8 1.2L12 18l-1.2-6.8L4 10l6.8-1.2L12 2Z"/><path d="m19 15 .6 2.4L22 18l-2.4.6L19 21l-.6-2.4L16 18l2.4-.6L19 15Z"/></>,
+    arrow:<><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></>,
+    lock:<><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,
+    user:<><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></>,
+    settings:<><path d="M12 3v2"/><path d="M12 19v2"/><path d="m4.9 4.9 1.4 1.4"/><path d="m17.7 17.7 1.4 1.4"/><path d="M3 12h2"/><path d="M19 12h2"/><path d="m4.9 19.1 1.4-1.4"/><path d="m17.7 6.3 1.4-1.4"/><circle cx="12" cy="12" r="4"/></>,
+    check:<><path d="m5 12 4 4L19 6"/></>,
+    crown:<><path d="m4 7 4 5 4-8 4 8 4-5-2 11H6L4 7Z"/></>,
+    bolt:<path d="m13 2-9 12h7l-1 8 9-12h-7l1-8Z"/>,
+    clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+  };
+  return <svg {...p}>{paths[name]||paths.spark}</svg>;
+}
+function relativeTime(value){
+  const diff=Math.max(0,Date.now()-new Date(value).getTime());
+  const mins=Math.floor(diff/60000); if(mins<1)return "just now"; if(mins<60)return mins+"m ago";
+  const hours=Math.floor(mins/60); if(hours<24)return hours+"h ago";
+  const days=Math.floor(hours/24); return days+"d ago";
+}
+function Dashboard({user,profile,savedCount,streak,recentMatches,onPlay,onLogout}){
+  const quote=FLAMES_QUOTES[(new Date().getDate()+savedCount)%FLAMES_QUOTES.length];
+  const first=(profile?.display_name||"FLAMES Friend").split(" ")[0];
+  const resultCounts=recentMatches.reduce((acc,m)=>{acc[m.result_key]=(acc[m.result_key]||0)+1;return acc},{});
+  const topKey=Object.keys(resultCounts).sort((x,y)=>(resultCounts[y]||0)-(resultCounts[x]||0))[0];
+  const topResult=topKey?RESULTS[topKey]:null;
+  const achievements=[
+    {icon:"play",title:"First flame",text:savedCount>0?"You completed your first match.":"Play your first match.",done:savedCount>0},
+    {icon:"bolt",title:"Keep the fire",text:streak>=3?"3-day streak unlocked.":streak===2?"One more day for a 3-day streak.":"Start a streak.",done:streak>=3},
+    {icon:"trophy",title:"Regular",text:savedCount>=5?"5 saved matches reached.":savedCount+" / 5 saved matches.",done:savedCount>=5},
+    {icon:"crown",title:"FLAMES legend",text:savedCount>=10?"10 saved matches reached.":savedCount+" / 10 saved matches.",done:savedCount>=10}
+  ];
+  return <main className="dashboard-page">
+    <div className="dashboard-bg dashboard-bg-a"/><div className="dashboard-bg dashboard-bg-b"/>
+    <header className="dashboard-nav">
+      <button className="dashboard-brand" onClick={onPlay}><span className="dashboard-brand-mark"><Flame/></span><span>FLAMES</span></button>
+      <nav><button className="active"><Icon name="home"/>Home</button><button onClick={onPlay}><Icon name="play"/>Play</button><button><Icon name="history"/>History</button></nav>
+      <div className="dashboard-nav-right"><span className="dashboard-streak"><Icon name="flame" size={16}/> {streak} day streak</span><button className="dashboard-avatar" aria-label="Account"><Icon name="user" size={17}/></button></div>
+    </header>
+    <section className="dashboard-layout">
+      <aside className="dashboard-sidebar">
+        <div className="profile-card">
+          <div className="profile-avatar"><Icon name="user" size={24}/></div><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div>
+          <span className="profile-live"><i/></span>
+        </div>
+        <button className="side-item active"><Icon name="home"/>Overview</button>
+        <button className="side-item" onClick={onPlay}><Icon name="play"/>Play FLAMES</button>
+        <button className="side-item"><Icon name="history"/>Your matches <b>{savedCount}</b></button>
+        <button className="side-item"><Icon name="trophy"/>Achievements</button>
+        <div className="sidebar-divider"/>
+        <div className="sidebar-mini"><span className="sidebar-mini-icon"><Icon name="spark" size={15}/></span><div><strong>Just for fun</strong><small>No pressure. No serious science.</small></div></div>
+        <button className="side-logout" onClick={onLogout}><Icon name="lock" size={16}/>Log out</button>
+      </aside>
+
+      <div className="dashboard-main">
+        <div className="dashboard-welcome">
+          <div><small>YOUR FLAMES SPACE</small><h1>Hey {first}. <em>What are we testing today?</em></h1><p>{quote}</p></div>
+          <button className="dashboard-play" onClick={onPlay}><Icon name="play" size={17}/> Play a match <Icon name="arrow" size={16}/></button>
+        </div>
+        <div className="dashboard-grid">
+          <section className="feed-column">
+            <article className="feed-card featured-card">
+              <div className="feed-card-top"><span className="feed-label"><Icon name="flame" size={14}/> TODAY'S VIBE</span><span>{new Date().toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})}</span></div>
+              <div className="vibe-core"><div className="vibe-flame"><Flame/></div><div><h2>Keep the fire curious.</h2><p>There is always another name pair, another ridiculous result, another reason to laugh.</p></div></div>
+              <div className="quote-strip">“{quote}”</div>
+            </article>
+
+            <article className="feed-card">
+              <div className="feed-card-top"><span className="feed-label"><Icon name="history" size={14}/> RECENT ACTIVITY</span><button onClick={onPlay}>New match <Icon name="arrow" size={14}/></button></div>
+              {recentMatches.length?<div className="match-feed">{recentMatches.slice(0,6).map(m=><div className="match-row" key={m.id}><div className={"match-result result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div><div className="match-copy"><strong>{m.name_a} <span>×</span> {m.secret_mode?"Secret Crush":m.name_b}</strong><small>{relativeTime(m.created_at)} · {RESULTS[m.result_key]?.name||"FLAMES result"}</small></div><div className="match-percent">{m.percent}%</div></div>)}</div>:<div className="empty-feed"><div className="empty-icon"><Icon name="spark"/></div><strong>Your FLAMES feed is empty.</strong><p>Your first match becomes the first memory here.</p><button onClick={onPlay}>Make your first match <Icon name="arrow" size={15}/></button></div>}
+            </article>
+          </section>
+
+          <aside className="dashboard-right">
+            <section className="stat-card streak-card"><div className="stat-icon"><Icon name="flame"/></div><div><small>CURRENT STREAK</small><strong>{streak} <span>days</span></strong><p>{streak>0?"The fire is still on.":"Play today to light it up."}</p></div></section>
+            <section className="stat-card"><div className="stat-icon dark"><Icon name="trophy"/></div><div><small>SAVED MATCHES</small><strong>{savedCount}</strong><p>Every saved result stays with you.</p></div></section>
+            <section className="record-card"><div className="record-head"><small>YOUR RECORD</small><Icon name="crown" size={18}/></div>{topResult?<><div className="record-big">{topResult.emoji}</div><strong>Most common outcome: {topResult.name}</strong><span>{resultCounts[topKey]} of your recent saved matches</span></>:<><div className="record-big muted"><Icon name="spark"/></div><strong>No record yet</strong><span>Your match history will build this.</span></>}</section>
+            <section className="achievements-card"><div className="record-head"><small>ACHIEVEMENTS</small><Icon name="trophy" size={18}/></div>{achievements.map(a=><div className={"achievement "+(a.done?"done":"")} key={a.title}><span className="achievement-icon"><Icon name={a.icon} size={15}/></span><div><strong>{a.title}</strong><small>{a.text}</small></div>{a.done&&<Icon name="check" size={15}/>}</div>)}</section>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>;
+}
+
 function AuthModal({mode,onClose,onAuthed,success,successName}){
   const [kind,setKind]=useState(mode||"login");
   const [name,setName]=useState("");
@@ -215,17 +313,17 @@ export default function App(){
   if(authPath==="/register") return <AuthPage type="register"/>;
   if(authPath==="/forgot-password") return <ForgotPasswordPage/>;
   if(authPath==="/reset-password") return <ResetPasswordPage/>;
-  const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
-  const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("id").eq("user_id",u.id).limit(100)]);setProfile(p||null);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
+  const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[recentMatches,setRecentMatches]=useState([]),[savedCount,setSavedCount]=useState(0),[streak,setStreak]=useState(0),[view,setView]=useState("dashboard"),[authOpen,setAuthOpen]=useState(false),[authMode,setAuthMode]=useState("login"),[authSuccess,setAuthSuccess]=useState(false),[authSuccessName,setAuthSuccessName]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false),[secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false),[miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
+  const loadAccount=async(u)=>{if(!u)return;const [{data:p},{data:m}]=await Promise.all([supabase.from("flames_profiles").select("*").eq("id",u.id).single(),supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(100)]);setProfile(p||null);setRecentMatches(m||[]);setSavedCount(m?.length||0);if(p){const today=new Date().toISOString().slice(0,10);if(p.last_active_date!==today){const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);const next=p.last_active_date===yesterday?(p.streak_count||0)+1:1;const {data:updated}=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();if(updated){setProfile(updated);setStreak(updated.streak_count||0)}}else setStreak(p.streak_count||0)}};
   useEffect(()=>{supabase.auth.getUser().then(async({data})=>{if(data?.user){setUser(data.user);await loadAccount(data.user)}});const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{const u=session?.user||null;setUser(u);if(u)await loadAccount(u);else{setProfile(null);setSavedCount(0);setStreak(0)}});return()=>sub.subscription.unsubscribe()},[]);
   const openAuth=mode=>{setAuthMode(mode);setAuthSuccess(false);setAuthOpen(true)};
   const finishAuth=async()=>{const {data}=await supabase.auth.getUser();if(data?.user){setUser(data.user);await loadAccount(data.user);setAuthSuccessName(data.user.user_metadata?.display_name||"FLAMES Friend");setAuthSuccess(true)}};
   const closeAuth=()=>{setAuthOpen(false);setAuthSuccess(false)};
-  const handleLogout=async()=>{await signOut();setUser(null);setProfile(null);setSavedCount(0);setStreak(0)};
+  const handleLogout=async()=>{await signOut();setUser(null);setProfile(null);setRecentMatches([]);setSavedCount(0);setStreak(0);setView("dashboard")};
   const saveMatch=async(k,message)=>{if(!user)return;const {error}=await supabase.from("flames_matches").insert({user_id:user.id,name_a:a.trim(),name_b:b.trim(),result_key:k,percent:score(a,b),message,secret_mode:secretMode});if(!error)setSavedCount(v=>v+1)};
   const result=key?RESULTS[key]:null;
   const pct=useMemo(()=>key?score(a,b):0,[a,b,key]);
-  const displayPair=secretMode?a.trim()+" × Secret Crush":a.trim()+" × "+b.trim();
+  const displayPair=secretMode?a.trim()+" × Secret Crush":a.trim()+" × "+b.trim();\n  if(user&&view==="dashboard"&&!key&&!loading)return <Dashboard user={user} profile={profile} savedCount={savedCount} streak={streak} recentMatches={recentMatches} onPlay={()=>setView("game")} onLogout={handleLogout}/>;
 
   const start=e=>{e.preventDefault();if(!a.trim()||!b.trim()||loading)return;trackEvent("match_started",{mode:secretMode?"secret_crush":"classic"});setLoading(true);setKey(null);setCopied(false);setDownloaded(false);setNudgeDismissed(false);window.setTimeout(async()=>{const k=flames(a,b);const list=RESULTS[k].messages;const qi=(a.length+b.length+Date.now())%list.length;setQuipIndex(qi);setKey(k);setLoading(false);trackEvent("match_completed",{mode:secretMode?"secret_crush":"classic",result:k});await saveMatch(k,list[qi])},1700)};
   const reset=()=>{setKey(null);setLoading(false);setCopied(false);setDownloaded(false)};
