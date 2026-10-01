@@ -304,6 +304,46 @@ function ProfilePage({profile,streak,savedCount,recentMatches,setView,onLogout})
   </main>;
 }
 
+function CreateGamePage({profile,streak,setView,user}){
+  const [kind,setKind]=useState("poll"),[title,setTitle]=useState(""),[prompt,setPrompt]=useState(""),[options,setOptions]=useState(["",""]),[answer,setAnswer]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[created,setCreated]=useState(null);
+  const needsOptions=kind==="poll"||kind==="quiz";
+  const updateOption=(i,v)=>setOptions(xs=>xs.map((x,n)=>n===i?v:x));
+  const addOption=()=>setOptions(xs=>xs.length<6?[...xs,""]:xs);
+  const removeOption=i=>setOptions(xs=>xs.length>2?xs.filter((_,n)=>n!==i):xs);
+  const create=async e=>{
+    e.preventDefault();setError("");
+    const cleanTitle=title.trim(),cleanPrompt=prompt.trim(),cleanOptions=options.map(x=>x.trim()).filter(Boolean);
+    if(cleanTitle.length<2){setError("Give your game a short title.");return}
+    if(cleanPrompt.length<3){setError("Write the question people will answer.");return}
+    if(needsOptions&&cleanOptions.length<2){setError("Add at least two choices.");return}
+    if(kind==="quiz"&&!answer.trim()){setError("Choose the correct answer for the quiz.");return}
+    setBusy(true);
+    const {data,error:e2}=await supabase.from("flames_games").insert({creator_id:user.id,kind,title:cleanTitle,prompt:cleanPrompt,options:cleanOptions,answer_value:kind==="quiz"?answer.trim():null}).select().single();
+    setBusy(false);
+    if(e2){setError(e2.message||"Could not create the game.");return}
+    setCreated(data);
+  };
+  if(created)return <main className="social-page"><AppNav profile={profile} streak={streak} view="create" setView={setView}/><div className="content-page create-page"><section className="create-success-card"><div className="create-success-icon"><Icon name="check" size={28}/></div><span className="eyebrow">GAME CREATED</span><h1>Ready to share.</h1><p>Your question is live. Send the link to friends and watch the answers come in.</p><div className="share-game-link">{location.origin+"/game/"+created.id}</div><div className="create-success-actions"><button type="button" className="big-play-btn" onClick={()=>navigator.clipboard?.writeText(location.origin+"/game/"+created.id)}>Copy link</button><button type="button" onClick={()=>setView("game")}>Back to FLAMES <Icon name="arrow" size={16}/></button></div><button type="button" className="text-link" onClick={()=>{setCreated(null);setTitle("");setPrompt("");setOptions(["",""]);setAnswer("")}}>Create another question</button></section></div></main>;
+  return <main className="social-page"><AppNav profile={profile} streak={streak} view="create" setView={setView}/><div className="content-page create-page"><div className="page-intro page-intro-row"><div><span className="eyebrow">CREATE A GAME</span><h1>Ask one good question.</h1><p>Make something small, share it, and let people play.</p></div><span className="create-badge"><Icon name="spark" size={16}/> Simple games</span></div><form className="large-card create-form" onSubmit={create}>
+    <div className="create-kind-row">{[["poll","Poll","Everyone picks a choice."],["quiz","Quiz","You choose the right answer."],["opinion","Opinion","Let people write their take."],["recommendation","Recommendation","Ask people what they would choose."]].map(([v,l,d])=><button type="button" key={v} className={kind===v?"kind-card active": "kind-card"} onClick={()=>setKind(v)}><strong>{l}</strong><span>{d}</span></button>)}</div>
+    <label>Game title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Friday night plans"/></label>
+    <label>Your question<textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={4} maxLength={500} placeholder="What should we do this weekend?"/></label>
+    {needsOptions&&<div className="create-options"><div className="create-section-label"><span>CHOICES</span><small>2–6 options</small></div>{options.map((v,i)=><div className="create-option" key={i}><input value={v} onChange={e=>updateOption(i,e.target.value)} placeholder={"Choice "+(i+1)}/>{options.length>2&&<button type="button" onClick={()=>removeOption(i)} aria-label={"Remove choice "+(i+1)}>×</button>}{kind==="quiz"&&<button type="button" className={answer===v.trim()&&v.trim()?"answer-chip selected":"answer-chip"} onClick={()=>setAnswer(v.trim())}>{answer===v.trim()&&v.trim()?"Correct ✓":"Mark correct"}</button>}</div>)}{options.length<6&&<button type="button" className="add-option-btn" onClick={addOption}><Icon name="plus" size={15}/> Add another choice</button>}</div>}
+    {error&&<div className="auth-error">{error}</div>}<div className="create-form-footer"><span><Icon name="flame" size={17}/> No pressure. Just a little game.</span><button className="big-play-btn" disabled={busy}>{busy?"Creating…":"Create game ↗"}</button></div>
+  </form></div></main>;
+}
+
+function PublicGameQuestion({gameId}){
+  const [game,setGame]=useState(null),[answer,setAnswer]=useState(""),[busy,setBusy]=useState(false),[done,setDone]=useState(false),[error,setError]=useState("");
+  useEffect(()=>{let active=true;(async()=>{const {data}=await supabase.from("flames_games").select("*").eq("id",gameId).single();if(active){if(data)setGame(data);else setError("This game could not be found.")}})();return()=>{active=false}},[gameId]);
+  const submit=async()=>{if(!answer.trim())return;setBusy(true);setError("");const {error:e}=await supabase.from("flames_game_responses").insert({game_id:gameId,answer:answer.trim()});setBusy(false);if(e){setError("Your answer could not be saved.");return}setDone(true)};
+  if(error)return <main className="game-question-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="game-question-card"><Icon name="spark" size={30}/><h1>Game unavailable.</h1><p>{error}</p><a className="big-play-btn" href="/">Play FLAMES</a></section></main>;
+  if(!game)return <main className="game-question-page"><div className="game-question-card"><div className="game-question-loader"><Flame/></div><p>Opening the game…</p></div></main>;
+  if(done)return <main className="game-question-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="game-question-card done"><div className="create-success-icon"><Icon name="check" size={28}/></div><span className="eyebrow">ANSWER SAVED</span><h1>Nice. You answered.</h1><p>Your response is in. Now go play FLAMES while they answer yours.</p><a className="big-play-btn" href="/">Play FLAMES <Icon name="arrow" size={16}/></a></section></main>;
+  const isChoice=game.kind==="poll"||game.kind==="quiz";
+  return <main className="game-question-page"><a className="auth-page-brand" href="/"><span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span>FLAMES</span></a><section className="game-question-card"><span className="eyebrow">{String(game.kind||"game").toUpperCase()}</span><h1>{game.title}</h1><p className="game-question-prompt">{game.prompt}</p>{isChoice?<div className="public-game-options">{(game.options||[]).map(o=><button type="button" className={answer===o?"selected":""} key={o} onClick={()=>setAnswer(o)}>{o}</button>)}</div>:<textarea className="public-game-answer" value={answer} onChange={e=>setAnswer(e.target.value)} maxLength={1000} rows={5} placeholder="Write your answer…"/>}{error&&<div className="auth-error">{error}</div>}<button type="button" className="big-play-btn" disabled={!answer.trim()||busy} onClick={submit}>{busy?"Saving…":"Send answer ↗"}</button><small className="game-question-foot">Just for fun · Created with FLAMES</small></section></main>;
+}
+
 function SettingsPage({profile,streak,setView,onLogout}){
   return <main className="social-page">
     <AppNav profile={profile} streak={streak} view="settings" setView={setView} onLogout={onLogout}/>
@@ -513,6 +553,7 @@ function AuthenticatedRouter({path,navigate}){
 
   if(authState!=="authenticated")return <main className="dashboard-boot"><div className="dashboard-brand-mark"><Flame/></div><span>Loading your FLAMES space…</span></main>;
   if(path==="/app/play")return <PublicGame initialView="game" appMode appNavigate={nav}/>;
+  if(path==="/app/create")return <CreateGamePage profile={profile} streak={streak} setView={nav} user={user}/>;
   if(path==="/app/history")return <HistoryPage profile={profile} streak={streak} recentMatches={recentMatches} setView={nav}/>;
   if(path==="/app/achievements")return <AchievementsPage profile={profile} streak={streak} recentMatches={recentMatches} savedCount={savedCount} setView={nav}/>;
   if(path==="/app/profile")return <ProfilePage profile={profile} streak={streak} savedCount={savedCount} recentMatches={recentMatches} setView={nav} onLogout={logout}/>;
@@ -553,5 +594,7 @@ export default function App(){
   if(path==="/reset-password")return <ResetPasswordPage/>;
   if(!authReady)return <main className="dashboard-boot"><div className="dashboard-brand-mark"><Flame/></div><span>Opening FLAMES…</span></main>;
   if(path.startsWith("/app"))return <AuthenticatedRouter path={path}/>;
+  const gameMatch=path.match(/^\/game\/([0-9a-f-]+)$/i);
+  if(gameMatch)return <PublicGameQuestion gameId={gameMatch[1]}/>;
   return <PublicGame initialView="dashboard"/>;
 }
