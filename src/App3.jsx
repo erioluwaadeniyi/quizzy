@@ -3,7 +3,7 @@ import "./App.css";
 import { trackEvent } from "./analytics.js";
 import { submitFeedback } from "./feedback.js";
 import { supabase } from "./supabase.js";
-import { Avatar, AVATARS } from "./avatarCatalog.js";
+import { Avatar, AVATARS } from "./avatarCatalog.jsx";
 import { signIn, signOut, signUp } from "./auth.js";
 import { GAME_TEMPLATES } from "./featureData.js";
 
