@@ -188,16 +188,56 @@ function Home({profile,streak,matches}){
 
 function CreatePage({profile,streak,user}){
   const [category,setCategory]=useState("Fun"),[question,setQuestion]=useState(""),[options,setOptions]=useState(["",""]),[busy,setBusy]=useState(false),[error,setError]=useState(""),[link,setLink]=useState("");
-  const applyTemplate=(item)=>{setQuestion(item[0]);setOptions(item[1].slice(0,4));setError("")};
+  const [selectedTemplate,setSelectedTemplate]=useState("");
+  const applyTemplate=(item)=>{setQuestion(item[0]);setOptions(item[1].slice(0,4));setSelectedTemplate(item[0]);setError("")};
+  const randomTemplate=()=>{const pool=QUESTION_TEMPLATES[category]||QUESTION_TEMPLATES.Fun;applyTemplate(pool[Math.floor(Math.random()*pool.length)])};
+  const updateOption=(index,value)=>setOptions(xs=>xs.map((v,i)=>i===index?value:v));
+  const addOption=()=>setOptions(xs=>xs.length<4?[...xs,""]:xs);
+  const removeOption=(index)=>setOptions(xs=>xs.length>2?xs.filter((_,i)=>i!==index):xs);
   const create=async e=>{
-    e.preventDefault();setError("");const q=question.trim(),opts=options.map(x=>x.trim()).filter(Boolean);
-    if(q.length<3||opts.length<2){setError("Write a question and at least two choices.");return}
-    setBusy(true);const title=q.length>45?q.slice(0,45).trim()+"…":q;
+    e.preventDefault();setError("");
+    const q=question.trim(),opts=options.map(x=>x.trim()).filter(Boolean);
+    if(q.length<3){setError("Give your question a little more detail.");return}
+    if(opts.length<2){setError("Add at least two choices.");return}
+    setBusy(true);
+    const title=q.length>45?q.slice(0,45).trim()+"…":q;
     const r=await supabase.from("flames_games").insert({creator_id:user.id,kind:"poll",title,prompt:q,options:opts,answer_value:null}).select().single();
-    setBusy(false);if(r.error){setError("Could not create the question.");return}setLink(location.origin+"/game/"+r.data.id);
+    setBusy(false);
+    if(r.error){setError("Could not create the question.");return}
+    setLink(location.origin+"/game/"+r.data.id);
   };
-  if(link)return <Shell profile={profile} streak={streak} view="create"><div className="sa-create"><section className="sa-create-card sa-success"><div className="sa-success-check">✓</div><span className="sa-kicker">LIVE</span><h1>Your question is ready.</h1><p>Send the link. That's it.</p><div className="sa-link">{link}</div><button className="sa-primary" onClick={()=>navigator.clipboard?.writeText(link)}>Copy link</button><button className="sa-plain" onClick={()=>setLink("")}>Ask another</button></section></div></Shell>;
-  return <Shell profile={profile} streak={streak} view="create"><div className="sa-create"><section className="sa-create-card"><span className="sa-kicker">CREATE</span><h1>Ask one fun question.</h1><p>Pick a prompt or make your own.</p><div className="sa-template-head"><span>QUESTION STARTERS</span><small>{category}</small></div><div className="sa-template-cats">{Object.keys(QUESTION_TEMPLATES).map(c=><button type="button" key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="sa-template-list">{QUESTION_TEMPLATES[category].map((item,i)=><button type="button" key={i} onClick={()=>applyTemplate(item)}><span>{item[0]}</span><Icon name="arrow" size={13}/></button>)}</div><form onSubmit={create}><label>Question<textarea rows={3} maxLength={500} value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Who should choose the movie?"/></label><div className="sa-choice-label"><span>Choices</span><small>2–4</small></div>{options.map((x,i)=><div className="sa-choice" key={i}><input value={x} onChange={e=>setOptions(xs=>xs.map((v,n)=>n===i?e.target.value:v))} placeholder={"Choice "+(i+1)}/>{options.length>2&&<button type="button" onClick={()=>setOptions(xs=>xs.filter((_,n)=>n!==i))}>×</button>}</div>)}{options.length<4&&<button type="button" className="sa-add" onClick={()=>setOptions(xs=>[...xs,""])}><Icon name="plus" size={14}/> Add choice</button>}{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={busy}>{busy?"Creating…":"Create question"} <Icon name="arrow"/></button></form></section></div></Shell>;
+  if(link)return <Shell profile={profile} streak={streak} view="create"><div className="create-studio-wrap"><section className="create-studio success"><div className="create-success-orbit"><span>✦</span><span>F</span><span>L</span><span>A</span><span>M</span><span>E</span></div><span className="sa-kicker">LIVE</span><h1>Your question is out.</h1><p>Send the link to your people and see what they say.</p><div className="create-share-line"><span>{link}</span><button type="button" onClick={async()=>{try{await navigator.clipboard.writeText(link)}catch{}}}>Copy</button></div><div className="create-success-actions"><button className="sa-primary" type="button" onClick={async()=>{try{await navigator.clipboard.writeText(link)}catch{}}}>Copy link <Icon name="arrow"/></button><button type="button" className="create-ghost-button" onClick={()=>{setLink("");setQuestion("");setOptions(["",""]);setSelectedTemplate("")}}>Create another</button></div></section></div></Shell>;
+  const previewQuestion=question.trim()||"Who should choose the movie tonight?";
+  const previewOptions=options.map(x=>x.trim()).filter(Boolean);
+  return <Shell profile={profile} streak={streak} view="create"><div className="create-studio-wrap"><section className="create-studio">
+    <div className="create-studio-head"><div><span className="sa-kicker">CREATE</span><h1>Ask something people <em>actually want</em> to answer.</h1><p>Pick a starter, make it yours, send the link.</p></div><button type="button" className="create-surprise" onClick={randomTemplate}><span>✦</span> Surprise me</button></div>
+
+    <div className="create-starters">
+      <div className="create-starters-top"><span>START WITH A VIBE</span><small>tap one to fill it in</small></div>
+      <div className="create-category-row">{Object.keys(QUESTION_TEMPLATES).map(c=><button type="button" key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</div>
+      <div className="create-template-row">{QUESTION_TEMPLATES[category].map((item,i)=><button type="button" key={i} className={selectedTemplate===item[0]?"selected":""} onClick={()=>applyTemplate(item)}><span>{item[0]}</span><Icon name="arrow" size={14}/></button>)}</div>
+    </div>
+
+    <form className="create-editor" onSubmit={create}>
+      <div className="create-editor-main">
+        <div className="create-field-title"><span>YOUR QUESTION</span><small>{question.length}/500</small></div>
+        <textarea rows={4} maxLength={500} value={question} onChange={e=>{setQuestion(e.target.value);setSelectedTemplate("")}} placeholder="Who should choose the movie tonight?"/>
+        <div className="create-choices-head"><div><span>CHOICES</span><small>Keep it to 2–4</small></div><button type="button" onClick={addOption} disabled={options.length>=4}>+ Add choice</button></div>
+        <div className="create-choice-list">{options.map((x,i)=><div className="create-choice-row" key={i}><span className="create-choice-number">{i+1}</span><input value={x} onChange={e=>updateOption(i,e.target.value)} placeholder={["Me","You","Both","Neither 😂"][i]||("Choice "+(i+1))}/>{options.length>2&&<button type="button" aria-label={"Remove choice "+(i+1)} onClick={()=>removeOption(i)}>×</button>}</div>)}</div>
+        {error&&<div className="sa-error">{error}</div>}
+        <div className="create-editor-foot"><span><Icon name="users" size={14}/> Private question link</span><button className="sa-primary create-submit" disabled={busy}>{busy?"Publishing…":"Create question"} <Icon name="arrow"/></button></div>
+      </div>
+
+      <aside className="create-preview" aria-label="Question preview">
+        <div className="create-preview-top"><span>PREVIEW</span><i>LIVE</i></div>
+        <div className="create-preview-flame"><Flame/></div>
+        <small>FLAMES QUESTION</small>
+        <h2>{previewQuestion}</h2>
+        <div className="create-preview-options">{(previewOptions.length?previewOptions:["Your first choice","Your second choice"]).map((o,i)=><div key={i}><span>{i+1}</span>{o}</div>)}</div>
+        <p>Friends can answer from the link. No account needed.</p>
+      </aside>
+    </form>
+  </section></div></Shell>;
 }
 function ProfilePage({profile,streak,matches}){
   const logout=async()=>{await signOut();window.location.replace("/")};
