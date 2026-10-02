@@ -411,19 +411,6 @@ export default function AdminDashboard() {
             </div>
           </section>
         ) : null}
-        ) : null}
-          <AdminTable
-            title="Feedback inbox"
-            rows={filteredRows(feedback, ["category", "rating", "message", "status"])}
-            columns={[
-              ["rating", "Rating"],
-              ["category", "Category"],
-              ["message", "Message"],
-              ["status", "Status"],
-              ["created_at", "Received"]
-            ]}
-          />
-        ) : null}
       </main>
     </div>
   );
