@@ -41,3 +41,77 @@
   .sa-result h2{font-size:34px}
   .sa-result blockquote{font-size:11px}
 }
+
+/* Premium FLAMES polish */
+.sa-game{position:relative;isolation:isolate}
+.sa-game-glow{position:absolute;z-index:-1;width:190px;height:190px;border-radius:50%;filter:blur(35px);pointer-events:none;opacity:.42}
+.sa-game-glow.glow-one{top:105px;left:-115px;background:#ffb44933;animation:drift 7s ease-in-out infinite}
+.sa-game-glow.glow-two{right:-115px;top:250px;background:#df5b3528;animation:drift 8.5s ease-in-out infinite reverse}
+.sa-game-heading h1{animation:headingIn .55s cubic-bezier(.2,.8,.2,1)}
+.sa-game-heading p{animation:fadeUp .7s ease both}
+.sa-mode{position:relative}
+.sa-mode:after{content:"";position:absolute;bottom:-5px;left:50%;width:60px;height:1px;transform:translateX(-50%);background:linear-gradient(90deg,transparent,var(--fire),transparent);opacity:.45}
+.sa-mode button{transition:transform .25s ease,box-shadow .25s ease,background .25s ease,color .25s ease}
+.sa-mode button:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 7px 16px #44271b12}
+.sa-game-card,.sa-result{backdrop-filter:blur(10px);transition:transform .35s ease,box-shadow .35s ease}
+.sa-game-card:hover{transform:translateY(-2px);box-shadow:0 20px 50px #44271b14}
+.sa-name-row label{transition:transform .25s ease}
+.sa-name-row label:focus-within{transform:translateY(-2px)}
+.sa-game-card input:focus,.sa-create-card input:focus,.sa-create-card textarea:focus,.sa-auth-card input:focus,.sa-search input:focus{border-color:#d96a4b;box-shadow:0 0 0 4px #df5b3510}
+.sa-name-plus{height:40px;display:grid;place-items:center}
+.sa-game-note{text-align:center;color:#b09d93;font-size:8px;font-weight:700;margin-top:10px}
+.sa-primary{transition:transform .2s ease,box-shadow .2s ease,background .2s ease}
+.sa-primary:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 9px 22px #24191422}
+.sa-primary:active:not(:disabled){transform:translateY(0) scale(.98)}
+.sa-flames-board{position:relative}
+.sa-flames-board:before{content:"";position:absolute;left:50%;top:50%;width:145px;height:45px;transform:translate(-50%,-50%);background:#ffb44916;border-radius:50%;filter:blur(14px);opacity:0;transition:opacity .4s}
+.sa-flames-board.is-running:before{opacity:1;animation:halo 1s ease-in-out infinite}
+.sa-flames-word span{box-shadow:0 1px 0 #fff inset}
+.sa-flames-word span.winner{animation:winnerGlow 1.1s ease-in-out infinite}
+.sa-result{animation:resultEntrance .65s cubic-bezier(.16,1,.3,1)}
+.sa-result:after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,#ffffff8c 50%,transparent 65%);transform:translateX(-120%);animation:sheen 1.2s .2s ease-out 1;pointer-events:none}
+.sa-result-confetti{position:absolute;inset:0;pointer-events:none}
+.sa-result-confetti i{position:absolute;width:5px;height:10px;border-radius:3px;background:#df5b35;opacity:0;animation:confetti .9s ease-out forwards}
+.sa-result-confetti i:nth-child(1){left:17%;top:20%;transform:rotate(18deg);animation-delay:.12s}
+.sa-result-confetti i:nth-child(2){left:28%;top:31%;transform:rotate(-26deg);animation-delay:.2s}
+.sa-result-confetti i:nth-child(3){right:23%;top:18%;transform:rotate(31deg);animation-delay:.28s}
+.sa-result-confetti i:nth-child(4){right:13%;top:35%;transform:rotate(-14deg);animation-delay:.16s}
+.sa-result-confetti i:nth-child(5){left:36%;top:13%;transform:rotate(48deg);animation-delay:.35s}
+.sa-result-confetti i:nth-child(6){right:35%;top:28%;transform:rotate(-42deg);animation-delay:.24s}
+.sa-result-title{animation:fadeUp .5s .12s both}
+.sa-result h2{animation:fadeUp .55s .2s both}
+.sa-result blockquote{animation:fadeUp .55s .27s both}
+.sa-result-message{animation:fadeUp .5s .34s both}
+.sa-result-bar{animation:barIn .7s .42s both}
+.sa-result-actions{animation:fadeUp .45s .5s both}
+
+/* Question starters stay light: tabs + tap-to-use rows, not extra cards */
+.sa-template-head{display:flex;align-items:center;justify-content:space-between;margin-top:18px;color:#9c887d;font-size:8px;letter-spacing:.1em;font-weight:950}
+.sa-template-head small{letter-spacing:0;text-transform:none;font-size:8px;color:var(--fire)}
+.sa-template-cats{display:flex;gap:6px;overflow:auto;padding:8px 0 5px;scrollbar-width:none}
+.sa-template-cats::-webkit-scrollbar{display:none}
+.sa-template-cats button{border:1px solid transparent;background:transparent;color:#9a887e;border-radius:999px;padding:6px 9px;font-size:8px;font-weight:900;white-space:nowrap;transition:.2s ease}
+.sa-template-cats button.active,.sa-template-cats button:hover{background:var(--soft);border-color:#edd5c8;color:var(--fire);transform:translateY(-1px)}
+.sa-template-list{display:grid;gap:3px;margin:3px 0 15px;padding-bottom:3px}
+.sa-template-list button{border:0;border-bottom:1px solid #eee4de;background:transparent;padding:9px 2px;display:flex;align-items:center;gap:8px;text-align:left;color:#55463f}
+.sa-template-list button:last-child{border-bottom:0}
+.sa-template-list button span{flex:1;font-size:9px;font-weight:800;line-height:1.35}
+.sa-template-list button svg{color:#bd9d8c;transition:transform .2s ease}
+.sa-template-list button:hover span{color:var(--fire)}
+.sa-template-list button:hover svg{transform:translateX(3px);color:var(--fire)}
+
+/* Compact home actions — actual buttons, not additional panels */
+.sa-quick-actions{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 2px}
+.sa-quick-actions button{border:1px solid var(--line);background:#fffaf7;color:#6f5f56;border-radius:999px;display:inline-flex;align-items:center;gap:6px;padding:8px 11px;font-size:9px;font-weight:900;transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease,color .2s ease}
+.sa-quick-actions button:hover{transform:translateY(-2px);border-color:#dec1b4;color:var(--fire);box-shadow:0 7px 17px #44271b0d}
+.sa-quick-actions .sa-avatar-xs{width:17px;height:17px;font-size:5px}
+@keyframes drift{0%,100%{transform:translate3d(0,0,0)}50%{transform:translate3d(15px,-12px,0)}}
+@keyframes headingIn{from{opacity:0;transform:translateY(10px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes halo{0%,100%{transform:translate(-50%,-50%) scale(.85);opacity:.35}50%{transform:translate(-50%,-50%) scale(1.08);opacity:.85}}
+@keyframes winnerGlow{0%,100%{box-shadow:0 0 0 0 #ffb44900,0 7px 18px #44271b1f}50%{box-shadow:0 0 0 6px #ffb44914,0 8px 24px #44271b24}}
+@keyframes resultEntrance{from{opacity:0;transform:translateY(15px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes sheen{to{transform:translateX(120%)}}
+@keyframes confetti{0%{opacity:0;transform:translateY(0) scale(.4)}20%{opacity:1}100%{opacity:0;transform:translateY(-24px) scale(1) rotate(90deg)}}
+@keyframes barIn{from{opacity:0;transform:scaleX(.25);transform-origin:left}to{opacity:1;transform:none}}
+@media(max-width:650px){.sa-quick-actions{gap:6px}.sa-quick-actions button{padding:8px 10px}.sa-template-list{margin-bottom:12px}.sa-template-list button{padding:8px 2px}.sa-game-glow{opacity:.25}}
