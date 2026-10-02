@@ -14,6 +14,33 @@ const RESULTS={
 };
 const LETTERS=["F","L","A","M","E","S"];
 const QUOTES=["One more match. You know you want to.","Curiosity has entered the chat.","Today feels like a good day to test a name.","No pressure. Just FLAMES.","There is always one more person to test 😂."];
+const QUESTION_TEMPLATES={
+  Fun:[
+    ["Who is most likely to survive a zombie apocalypse?",["Me","You","Neither 😂"]],
+    ["Who would win in a staring contest?",["Me","You","We both lose"]],
+    ["Pick our next chaotic plan.",["Food trip","Movie night","Random adventure"]]
+  ],
+  Friends:[
+    ["Who should choose the movie?",["Me","You","Let's vote"]],
+    ["Who would reply first in the group chat?",["Me","You","Both late 😂"]],
+    ["Who knows the other person better?",["Obviously me","Obviously you","Let's find out"]]
+  ],
+  Crush:[
+    ["Be honest… who catches feelings first?",["Me 👀","You 👀","It's complicated"]],
+    ["Would you actually go on a date?",["Yes","Maybe","Absolutely not 😂"]],
+    ["What is our vibe?",["Cute","Dangerous","Don't ask 😂"]]
+  ],
+  Deep:[
+    ["Who gives better advice?",["Me","You","We both try"]],
+    ["Who would you trust with your biggest secret?",["Me","You","Depends 😭"]],
+    ["Which matters more in a friendship?",["Trust","Fun","Both"]]
+  ],
+  Chaos:[
+    ["Who is more likely to start an argument over nothing?",["Me 😂","You 😂","Both"]],
+    ["Who would get lost on a simple trip?",["Me","You","We're doomed"]],
+    ["Who is the bigger menace?",["Me","You","No comment"]]
+  ]
+};
 
 function flames(a,b){
   let x=a.toLowerCase().replace(/[^a-z]/g,"").split("");
@@ -138,11 +165,12 @@ function GamePage({profile,streak,user}){
 }
 function Home({profile,streak,matches}){
   const first=(profile?.display_name||"Friend").split(" ")[0],latest=matches[0],quote=QUOTES[(new Date().getDate()+matches.length)%QUOTES.length];
-  return <Shell profile={profile} streak={streak} view="home"><div className="sa-home"><section className="sa-welcome"><div><span className="sa-kicker">WELCOME BACK</span><h1>Hey {first}.</h1><p>{quote}</p></div><span className="sa-fire-mini">🔥 {streak||0}</span></section><section className="sa-hero-card"><div className="sa-hero-flame">🔥</div><span className="sa-kicker">READY?</span><h2>Let's see what FLAMES says.</h2><p>No overthinking. Just put in two names.</p><button className="sa-primary sa-hero-button" onClick={()=>go("/app/play")}><Icon name="play"/> Play FLAMES</button></section><div className="sa-two-actions"><button onClick={()=>go("/app/create")}><span className="sa-action-icon"><Icon name="plus"/></span><div><strong>Ask a question</strong><small>Make a tiny game for friends.</small></div><Icon name="arrow"/></button><button onClick={()=>go("/app/profile")}><Avatar profile={profile} size="sm"/><div><strong>Your profile</strong><small>@{profile?.username||"flames"}</small></div><Icon name="arrow"/></button></div><section className="sa-recent"><div className="sa-section-title"><span className="sa-kicker">RECENT</span><h3>Latest FLAMES</h3></div>{latest?<div className="sa-latest"><div className={"sa-letter-result result-"+String(latest.result_key).toLowerCase()}>{latest.result_key}</div><div><strong>{latest.name_a} × {latest.name_b}</strong><span>{RESULTS[latest.result_key]?.name} · {latest.percent}%</span><small>{timeAgo(latest.created_at)}</small></div></div>:<div className="sa-empty"><span>✦</span><p>Your first result will live here.</p><button onClick={()=>go("/app/play")}>Play now <Icon name="arrow" size={14}/></button></div>}</section></div></Shell>;
+  return <Shell profile={profile} streak={streak} view="home"><div className="sa-home"><section className="sa-welcome"><div><span className="sa-kicker">WELCOME BACK</span><h1>Hey {first}.</h1><p>{quote}</p></div><span className="sa-fire-mini">🔥 {streak||0}</span></section><section className="sa-hero-card"><div className="sa-hero-flame">🔥</div><span className="sa-kicker">READY?</span><h2>Let's see what FLAMES says.</h2><p>No overthinking. Just put in two names.</p><button className="sa-primary sa-hero-button" onClick={()=>go("/app/play")}><Icon name="play"/> Play FLAMES</button></section><div className="sa-quick-actions"><button onClick={()=>go("/app/create")}><Icon name="plus" size={15}/><span>Ask a question</span></button><button onClick={()=>go("/app/circle")}><Icon name="users" size={15}/><span>Private Circle</span></button><button onClick={()=>go("/app/profile")}><Avatar profile={profile} size="xs"/><span>Profile</span></button></div><section className="sa-recent"><div className="sa-section-title"><span className="sa-kicker">RECENT</span><h3>Latest FLAMES</h3></div>{latest?<div className="sa-latest"><div className={"sa-letter-result result-"+String(latest.result_key).toLowerCase()}>{latest.result_key}</div><div><strong>{latest.name_a} × {latest.name_b}</strong><span>{RESULTS[latest.result_key]?.name} · {latest.percent}%</span><small>{timeAgo(latest.created_at)}</small></div></div>:<div className="sa-empty"><span>✦</span><p>Your first result will live here.</p><button onClick={()=>go("/app/play")}>Play now <Icon name="arrow" size={14}/></button></div>}</section></div></Shell>;
 }
 
 function CreatePage({profile,streak,user}){
-  const [question,setQuestion]=useState(""),[options,setOptions]=useState(["",""]),[busy,setBusy]=useState(false),[error,setError]=useState(""),[link,setLink]=useState("");
+  const [category,setCategory]=useState("Fun"),[question,setQuestion]=useState(""),[options,setOptions]=useState(["",""]),[busy,setBusy]=useState(false),[error,setError]=useState(""),[link,setLink]=useState("");
+  const applyTemplate=(item)=>{setQuestion(item[0]);setOptions(item[1].slice(0,4));setError("")};
   const create=async e=>{
     e.preventDefault();setError("");const q=question.trim(),opts=options.map(x=>x.trim()).filter(Boolean);
     if(q.length<3||opts.length<2){setError("Write a question and at least two choices.");return}
@@ -151,9 +179,8 @@ function CreatePage({profile,streak,user}){
     setBusy(false);if(r.error){setError("Could not create the question.");return}setLink(location.origin+"/game/"+r.data.id);
   };
   if(link)return <Shell profile={profile} streak={streak} view="create"><div className="sa-create"><section className="sa-create-card sa-success"><div className="sa-success-check">✓</div><span className="sa-kicker">LIVE</span><h1>Your question is ready.</h1><p>Send the link. That's it.</p><div className="sa-link">{link}</div><button className="sa-primary" onClick={()=>navigator.clipboard?.writeText(link)}>Copy link</button><button className="sa-plain" onClick={()=>setLink("")}>Ask another</button></section></div></Shell>;
-  return <Shell profile={profile} streak={streak} view="create"><div className="sa-create"><section className="sa-create-card"><span className="sa-kicker">CREATE</span><h1>Ask one fun question.</h1><p>Keep it quick. Give people a few choices.</p><form onSubmit={create}><label>Question<textarea rows={4} maxLength={500} value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Who should choose the movie?"/></label><div className="sa-choice-label"><span>Choices</span><small>2–4</small></div>{options.map((x,i)=><div className="sa-choice" key={i}><input value={x} onChange={e=>setOptions(xs=>xs.map((v,n)=>n===i?e.target.value:v))} placeholder={"Choice "+(i+1)}/>{options.length>2&&<button type="button" onClick={()=>setOptions(xs=>xs.filter((_,n)=>n!==i))}>×</button>}</div>)}{options.length<4&&<button type="button" className="sa-add" onClick={()=>setOptions(xs=>[...xs,""])}><Icon name="plus" size={14}/> Add choice</button>}{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={busy}>{busy?"Creating…":"Create question"} <Icon name="arrow"/></button></form></section></div></Shell>;
+  return <Shell profile={profile} streak={streak} view="create"><div className="sa-create"><section className="sa-create-card"><span className="sa-kicker">CREATE</span><h1>Ask one fun question.</h1><p>Pick a prompt or make your own.</p><div className="sa-template-head"><span>QUESTION STARTERS</span><small>{category}</small></div><div className="sa-template-cats">{Object.keys(QUESTION_TEMPLATES).map(c=><button type="button" key={c} className={category===c?"active":""} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="sa-template-list">{QUESTION_TEMPLATES[category].map((item,i)=><button type="button" key={i} onClick={()=>applyTemplate(item)}><span>{item[0]}</span><Icon name="arrow" size={13}/></button>)}</div><form onSubmit={create}><label>Question<textarea rows={3} maxLength={500} value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Who should choose the movie?"/></label><div className="sa-choice-label"><span>Choices</span><small>2–4</small></div>{options.map((x,i)=><div className="sa-choice" key={i}><input value={x} onChange={e=>setOptions(xs=>xs.map((v,n)=>n===i?e.target.value:v))} placeholder={"Choice "+(i+1)}/>{options.length>2&&<button type="button" onClick={()=>setOptions(xs=>xs.filter((_,n)=>n!==i))}>×</button>}</div>)}{options.length<4&&<button type="button" className="sa-add" onClick={()=>setOptions(xs=>[...xs,""])}><Icon name="plus" size={14}/> Add choice</button>}{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={busy}>{busy?"Creating…":"Create question"} <Icon name="arrow"/></button></form></section></div></Shell>;
 }
-
 function ProfilePage({profile,streak,matches}){
   const logout=async()=>{await signOut();window.location.replace("/")};
   return <Shell profile={profile} streak={streak} view="profile"><div className="sa-profile"><section className="sa-profile-card"><Avatar profile={profile} size="xl"/><span className="sa-kicker">YOUR FLAMES</span><h1>{profile?.display_name||"FLAMES Friend"}</h1><p>@{profile?.username||"flames"}</p><div className="sa-profile-stats"><div><strong>{matches.length}</strong><span>matches</span></div><div><strong>{streak||0}</strong><span>day streak</span></div></div></section><section className="sa-profile-list"><button onClick={()=>go("/app/history")}><Icon name="clock"/><span>Recent matches</span><Icon name="arrow"/></button><button onClick={()=>go("/app/circle")}><Icon name="users"/><span>Private Circle</span><Icon name="arrow"/></button><button onClick={()=>go("/app/achievements")}><Icon name="spark"/><span>Achievements</span><Icon name="arrow"/></button><button onClick={()=>go("/app/settings")}><Icon name="settings"/><span>Settings</span><Icon name="arrow"/></button><button className="danger" onClick={logout}><Icon name="back"/><span>Log out</span></button></section></div></Shell>;
