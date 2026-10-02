@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import "./AdminDashboard.css";
 import { supabase } from "./supabase.js";
+import { signIn, signOut } from "./auth.js";
 
 const nav = [
   ["overview", "Overview"],
@@ -198,14 +199,7 @@ export default function AdminDashboard() {
   }
 
   if (!admin) {
-    return (
-      <div className="admin-empty">
-        <strong>{error || "Admin access required."}</strong>
-        <div style={{ marginTop: 8 }}>
-          Sign in with the administrator account, then open /admin.
-        </div>
-      </div>
-    );
+    return <AdminLogin error={error} />;
   }
 
   return (
@@ -459,5 +453,67 @@ function AdminTable({ title, rows, columns }) {
         <div className="admin-empty">No matching records.</div>
       )}
     </div>
+  );
+}
+
+function AdminLogin({ error }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(error || "");
+
+  async function submit(event) {
+    event.preventDefault();
+    setMessage("");
+    if (!email.trim() || !password) {
+      setMessage("Enter your administrator email and password.");
+      return;
+    }
+    setBusy(true);
+    const result = await signIn({ email: email.trim().toLowerCase(), password });
+    setBusy(false);
+    if (result.error) {
+      setMessage(result.error.message || "Unable to sign in.");
+      return;
+    }
+    window.location.reload();
+  }
+
+  return (
+    <main className="admin-login-page">
+      <section className="admin-login-card">
+        <div className="admin-login-mark">F</div>
+        <span className="admin-kicker">FLAMES CONTROL CENTER</span>
+        <h1>Admin sign in</h1>
+        <p>Use an account that has been granted administrator access.</p>
+        <form onSubmit={submit} className="admin-login-form">
+          <label>
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={function (event) { setEmail(event.target.value); }}
+              placeholder="admin@example.com"
+              autoComplete="username"
+            />
+          </label>
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={function (event) { setPassword(event.target.value); }}
+              placeholder="Your password"
+              autoComplete="current-password"
+            />
+          </label>
+          {message ? <div className="admin-error">{message}</div> : null}
+          <button className="admin-btn dark admin-login-submit" disabled={busy}>
+            {busy ? "Signing in..." : "Enter admin"}
+          </button>
+        </form>
+        <a className="admin-back-link" href="/">Back to FLAMES</a>
+      </section>
+    </main>
   );
 }
