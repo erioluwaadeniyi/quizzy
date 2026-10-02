@@ -411,6 +411,7 @@ export default function AdminDashboard() {
             </div>
           </section>
         ) : null}
+        ) : null}
           <AdminTable
             title="Feedback inbox"
             rows={filteredRows(feedback, ["category", "rating", "message", "status"])}
