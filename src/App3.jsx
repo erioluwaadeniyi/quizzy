@@ -166,74 +166,43 @@ function relativeTime(value){const diff=Math.max(0,Date.now()-new Date(value).ge
 function resultCounts(matches){return matches.reduce((acc,m)=>{acc[m.result_key]=(acc[m.result_key]||0)+1;return acc},{});}
 
 function AppNav({profile,streak,view,setView,onLogout}){
-  const go=v=>setView(v);
-  const items=[["dashboard","Home","home"],["game","Play","play"],["history","History","history"],["circle","Private Circle","users"],["achievements","Achievements","trophy"]];
-  return <header className="app-shell-nav">
-    <button className="app-shell-brand" type="button" onClick={()=>go("dashboard")}><span className="app-shell-logo"><Flame/></span><span>FLAMES</span></button>
-    <nav className="app-shell-mainnav">
-      {items.map(([v,label,icon])=><button type="button" key={v} className={view===v?"active":""} onClick={()=>go(v)}><Icon name={icon} size={19}/><span>{label}</span></button>)}
-    </nav>
-    <div className="app-shell-actions">
-      <span className="nav-streak"><Icon name="flame" size={17}/><b>{streak||0}</b><span>day streak</span></span>
-      <button type="button" className="nav-create-button" onClick={()=>go("create")}><Icon name="plus" size={16}/><span>Create</span></button><button type="button" className="nav-profile-button" aria-label="Open profile" onClick={()=>go("profile")}><Avatar profile={profile} size="sm"/></button>
-    </div>
+  const items=[["dashboard","Home","home"],["game","Play","play"],["create","Create","plus"]];
+  return <header className="app-shell-nav simple-app-nav">
+    <button className="app-shell-brand" type="button" onClick={()=>setView("dashboard")}><span className="app-shell-logo"><Flame/></span><span>FLAMES</span></button>
+    <nav className="app-shell-mainnav">{items.map(([v,label,icon])=><button type="button" key={v} className={view===v?"active":""} onClick={()=>setView(v)}><Icon name={icon} size={18}/><span>{label}</span></button>)}</nav>
+    <div className="app-shell-actions"><span className="nav-streak"><Icon name="flame" size={16}/><b>{streak||0}</b></span><button type="button" className="nav-profile-button" aria-label="Open profile" onClick={()=>setView("profile")}><Avatar profile={profile} size="sm"/></button></div>
   </header>;
 }
 
 function Dashboard({profile,savedCount,streak,recentMatches,setView}){
   const quote=FLAMES_QUOTES[(new Date().getDate()+savedCount)%FLAMES_QUOTES.length];
   const first=(profile?.display_name||"Friend").split(" ")[0];
-  const counts=resultCounts(recentMatches);
-  const topKey=Object.keys(counts).sort((x,y)=>(counts[y]||0)-(counts[x]||0))[0];
-  const top=topKey?RESULTS[topKey]:null;
   const latest=recentMatches[0];
-  return <main className="social-page">
+  return <main className="simple-home">
     <AppNav profile={profile} streak={streak} view="dashboard" setView={setView}/>
-    <div className="social-layout">
-      <section className="social-main">
-        <div className="social-hero">
-          <div>
-            <span className="eyebrow">YOUR FLAMES SPACE</span>
-            <h1>Hey {first}. <em>Ready for another match?</em></h1>
-            <p>“{quote}”</p>
-          </div>
-          <div className="hero-actions"><button className="big-play-btn" type="button" onClick={()=>setView("game")}><Icon name="play" size={18}/> Play FLAMES <Icon name="arrow" size={17}/></button><button className="soft-play-btn" type="button" onClick={()=>setView("create")}><Icon name="plus" size={17}/> Create a question</button></div>
-        </div>
+    <div className="simple-home-inner">
+      <div className="simple-welcome">
+        <div><span className="eyebrow">YOUR FLAMES</span><h1>Hey {first}.</h1><p>“{quote}”</p></div>
+        <div className="streak-pill"><Icon name="flame" size={16}/><strong>{streak||0}</strong> day streak</div>
+      </div>
 
-        <section className="social-feed-card featured">
-          <div className="feed-head"><div><span>TODAY'S FLAME</span><h2>Two names. One ridiculous result.</h2></div><span className="live-chip"><i/>Just for fun</span></div>
-          <p className="feature-copy">Classic FLAMES is still the main event. Run a match, save the result, and come back whenever curiosity hits.</p>
-          <div className="quote-bubble">“{quote}”</div>
-          <div className="feature-actions">
-            <button type="button" onClick={()=>setView("game")}><Icon name="play" size={17}/> Start a match</button>
-            <button type="button" className="quiet-action" onClick={()=>setView("circle")}><Icon name="users" size={17}/> Open Private Circle</button>
-          </div>
-        </section>
-
-        <section className="social-feed-card">
-          <div className="feed-head">
-            <div><span>RECENT FLAMES</span><h3>Your latest moments</h3></div>
-            <button type="button" className="text-link" onClick={()=>setView("history")}>View history <Icon name="arrow" size={15}/></button>
-          </div>
-          {recentMatches.length?<div className="match-list">{recentMatches.slice(0,6).map(m=><div className="match-item" key={m.id}>
-            <div className={"match-orb result-"+String(m.result_key||"").toLowerCase()}>{m.result_key}</div>
-            <div><strong>{m.name_a} <i>×</i> {m.secret_mode?"Secret Crush":m.name_b}</strong><small>{RESULTS[m.result_key]?.name||"FLAMES"} · {relativeTime(m.created_at)}</small></div>
-            <b>{m.percent}%</b>
-          </div>)}</div>:<div className="empty-space"><Icon name="spark" size={27}/><strong>Your FLAMES history starts here.</strong><p>Play your first match and your saved result will appear on this feed.</p><button type="button" onClick={()=>setView("game")}>Play your first match <Icon name="arrow" size={15}/></button></div>}
-        </section>
-
-        <div className="dashboard-footer-actions">
-          <button type="button" onClick={()=>setView("achievements")}><Icon name="trophy" size={17}/><span><strong>Achievements</strong><small>See your milestones and records.</small></span><Icon name="arrow" size={16}/></button>
-          <button type="button" onClick={()=>setView("profile")}><Avatar profile={profile} size="sm"/><span><strong>Your profile</strong><small>@{profile?.username||"flames"}</small></span><Icon name="arrow" size={16}/></button>
-        </div>
+      <section className="simple-play-card">
+        <div className="simple-play-flame"><Flame/></div>
+        <span className="eyebrow">WHAT ARE WE SAYING TODAY?</span>
+        <h2>Two names.<br/><em>One FLAMES result.</em></h2>
+        <p>Keep it silly. Test a name pair and see what happens.</p>
+        <button className="big-play-btn simple-primary" type="button" onClick={()=>setView("game")}><Icon name="play" size={19}/> Play FLAMES</button>
       </section>
 
-      <aside className="social-right">
-        <section className="side-profile-card"><Avatar profile={profile} size="lg"/><span className="eyebrow">YOUR PROFILE</span><h3>{profile?.display_name||"FLAMES Friend"}</h3><p>@{profile?.username||"flames"}</p><button type="button" onClick={()=>setView("profile")}>Open profile <Icon name="arrow" size={15}/></button></section>
-        <section className="side-stat-card"><span className="side-stat-icon"><Icon name="flame" size={20}/></span><div><span>STREAK</span><strong>{streak||0} day{streak===1?"":"s"}</strong><p>{streak>1?"You are on a roll.":"Play tomorrow to keep it going."}</p></div></section>
-        <section className="side-stat-card"><span className="side-stat-icon warm"><Icon name="history" size={20}/></span><div><span>SAVED MATCHES</span><strong>{savedCount}</strong><p>{savedCount?"Your FLAMES memories are building.":"Your first one is waiting."}</p></div></section>
-        <section className="side-record-card"><span className="eyebrow">YOUR RECORD</span><strong>{top?top.emoji:"✦"}</strong><h3>{top?top.name:"No pattern yet"}</h3><p>{top?counts[topKey]+" saved result"+(counts[topKey]===1?"":"s"):"Play a few matches and your history will start showing a pattern."}</p>{latest&&<button type="button" onClick={()=>setView("history")}>See your latest <Icon name="arrow" size={15}/></button>}</section>
-      </aside>
+      <div className="simple-actions-row">
+        <button type="button" onClick={()=>setView("create")}><span className="simple-action-icon"><Icon name="plus" size={18}/></span><strong>Ask a question</strong><small>Make a tiny game for friends.</small><Icon name="arrow" size={16}/></button>
+        <button type="button" onClick={()=>setView("profile")}><Avatar profile={profile} size="sm"/><strong>Your profile</strong><small>@{profile?.username||"flames"}</small><Icon name="arrow" size={16}/></button>
+      </div>
+
+      <section className="simple-recent">
+        <div className="simple-section-head"><div><span className="eyebrow">RECENT</span><h3>Your latest FLAMES</h3></div></div>
+        {latest?<div className="simple-latest"><div className={"simple-result-letter result-"+String(latest.result_key||"").toLowerCase()}>{latest.result_key}</div><div><strong>{latest.name_a} <i>×</i> {latest.secret_mode?"Secret Crush":latest.name_b}</strong><p>{RESULTS[latest.result_key]?.name||"FLAMES"} · {latest.percent}%</p><small>{relativeTime(latest.created_at)}</small></div><button type="button" onClick={()=>setView("game")}><Icon name="play" size={15}/></button></div>:<div className="simple-empty"><span>✦</span><p>Your first match will appear here.</p><button type="button" onClick={()=>setView("game")}>Play now <Icon name="arrow" size={14}/></button></div>}
+      </section>
     </div>
   </main>;
 }
@@ -305,32 +274,24 @@ function ProfilePage({profile,streak,savedCount,recentMatches,setView,onLogout})
 }
 
 function CreateGamePage({profile,streak,setView,user}){
-  const [kind,setKind]=useState("poll"),[title,setTitle]=useState(""),[prompt,setPrompt]=useState(""),[options,setOptions]=useState(["",""]),[answer,setAnswer]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[created,setCreated]=useState(null);
-  const needsOptions=kind==="poll"||kind==="quiz";
+  const [prompt,setPrompt]=useState(""),[options,setOptions]=useState(["",""]),[busy,setBusy]=useState(false),[error,setError]=useState(""),[created,setCreated]=useState(null);
   const updateOption=(i,v)=>setOptions(xs=>xs.map((x,n)=>n===i?v:x));
-  const addOption=()=>setOptions(xs=>xs.length<6?[...xs,""]:xs);
+  const addOption=()=>setOptions(xs=>xs.length<4?[...xs,""]:xs);
   const removeOption=i=>setOptions(xs=>xs.length>2?xs.filter((_,n)=>n!==i):xs);
   const create=async e=>{
     e.preventDefault();setError("");
-    const cleanTitle=title.trim(),cleanPrompt=prompt.trim(),cleanOptions=options.map(x=>x.trim()).filter(Boolean);
-    if(cleanTitle.length<2){setError("Give your game a short title.");return}
-    if(cleanPrompt.length<3){setError("Write the question people will answer.");return}
-    if(needsOptions&&cleanOptions.length<2){setError("Add at least two choices.");return}
-    if(kind==="quiz"&&!answer.trim()){setError("Choose the correct answer for the quiz.");return}
+    const cleanPrompt=prompt.trim(),cleanOptions=options.map(x=>x.trim()).filter(Boolean);
+    if(cleanPrompt.length<3){setError("Write the question first.");return}
+    if(cleanOptions.length<2){setError("Add at least two choices.");return}
     setBusy(true);
-    const {data,error:e2}=await supabase.from("flames_games").insert({creator_id:user.id,kind,title:cleanTitle,prompt:cleanPrompt,options:cleanOptions,answer_value:kind==="quiz"?answer.trim():null}).select().single();
+    const title=(cleanPrompt.length>42?cleanPrompt.slice(0,42).trim()+"…":cleanPrompt);
+    const {data,error:e2}=await supabase.from("flames_games").insert({creator_id:user.id,kind:"poll",title,prompt:cleanPrompt,options:cleanOptions,answer_value:null}).select().single();
     setBusy(false);
-    if(e2){setError(e2.message||"Could not create the game.");return}
+    if(e2){setError("Could not create your question. Try again.");return}
     setCreated(data);
   };
-  if(created)return <main className="social-page"><AppNav profile={profile} streak={streak} view="create" setView={setView}/><div className="content-page create-page"><section className="create-success-card"><div className="create-success-icon"><Icon name="check" size={28}/></div><span className="eyebrow">GAME CREATED</span><h1>Ready to share.</h1><p>Your question is live. Send the link to friends and watch the answers come in.</p><div className="share-game-link">{location.origin+"/game/"+created.id}</div><div className="create-success-actions"><button type="button" className="big-play-btn" onClick={()=>navigator.clipboard?.writeText(location.origin+"/game/"+created.id)}>Copy link</button><button type="button" onClick={()=>setView("game")}>Back to FLAMES <Icon name="arrow" size={16}/></button></div><button type="button" className="text-link" onClick={()=>{setCreated(null);setTitle("");setPrompt("");setOptions(["",""]);setAnswer("")}}>Create another question</button></section></div></main>;
-  return <main className="social-page"><AppNav profile={profile} streak={streak} view="create" setView={setView}/><div className="content-page create-page"><div className="page-intro page-intro-row"><div><span className="eyebrow">CREATE A GAME</span><h1>Ask one good question.</h1><p>Make something small, share it, and let people play.</p></div><span className="create-badge"><Icon name="spark" size={16}/> Simple games</span></div><form className="large-card create-form" onSubmit={create}>
-    <div className="create-kind-row">{[["poll","Poll","Everyone picks a choice."],["quiz","Quiz","You choose the right answer."],["opinion","Opinion","Let people write their take."],["recommendation","Recommendation","Ask people what they would choose."]].map(([v,l,d])=><button type="button" key={v} className={kind===v?"kind-card active": "kind-card"} onClick={()=>setKind(v)}><strong>{l}</strong><span>{d}</span></button>)}</div>
-    <label>Game title<input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Friday night plans"/></label>
-    <label>Your question<textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={4} maxLength={500} placeholder="What should we do this weekend?"/></label>
-    {needsOptions&&<div className="create-options"><div className="create-section-label"><span>CHOICES</span><small>2–6 options</small></div>{options.map((v,i)=><div className="create-option" key={i}><input value={v} onChange={e=>updateOption(i,e.target.value)} placeholder={"Choice "+(i+1)}/>{options.length>2&&<button type="button" onClick={()=>removeOption(i)} aria-label={"Remove choice "+(i+1)}>×</button>}{kind==="quiz"&&<button type="button" className={answer===v.trim()&&v.trim()?"answer-chip selected":"answer-chip"} onClick={()=>setAnswer(v.trim())}>{answer===v.trim()&&v.trim()?"Correct ✓":"Mark correct"}</button>}</div>)}{options.length<6&&<button type="button" className="add-option-btn" onClick={addOption}><Icon name="plus" size={15}/> Add another choice</button>}</div>}
-    {error&&<div className="auth-error">{error}</div>}<div className="create-form-footer"><span><Icon name="flame" size={17}/> No pressure. Just a little game.</span><button className="big-play-btn" disabled={busy}>{busy?"Creating…":"Create game ↗"}</button></div>
-  </form></div></main>;
+  if(created){const link=location.origin+"/game/"+created.id;return <main className="simple-home"><AppNav profile={profile} streak={streak} view="create" setView={setView}/><div className="simple-create-wrap"><section className="simple-create-success"><div className="create-success-icon"><Icon name="check" size={28}/></div><span className="eyebrow">READY</span><h1>Your question is live.</h1><p>Send it to your people and wait for the answers.</p><div className="share-game-link">{link}</div><button className="big-play-btn" type="button" onClick={async()=>{try{await navigator.clipboard.writeText(link)}catch{} }}>Copy link</button><button type="button" className="simple-text-btn" onClick={()=>{setCreated(null);setPrompt("");setOptions(["",""])}}>Ask another</button></section></div></main>}
+  return <main className="simple-home"><AppNav profile={profile} streak={streak} view="create" setView={setView}/><div className="simple-create-wrap"><section className="simple-create-card"><span className="eyebrow">CREATE</span><h1>Ask one fun question.</h1><p>No quiz setup. No complicated settings.</p><form onSubmit={create}><label>Your question<textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={4} maxLength={500} placeholder="Who should choose the movie tonight?"/></label><div className="simple-options-head"><span>CHOICES</span><small>2–4</small></div>{options.map((v,i)=><div className="simple-option" key={i}><input value={v} onChange={e=>updateOption(i,e.target.value)} placeholder={"Choice "+(i+1)}/>{options.length>2&&<button type="button" onClick={()=>removeOption(i)}>×</button>}</div>)}{options.length<4&&<button type="button" className="add-option-btn" onClick={addOption}><Icon name="plus" size={15}/> Add choice</button>}{error&&<div className="auth-error">{error}</div>}<button className="big-play-btn" disabled={busy}>{busy?"Creating…":"Create question ↗"}</button></form></section></div></main>;
 }
 
 function PublicGameQuestion({gameId}){
