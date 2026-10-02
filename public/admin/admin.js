@@ -1,45 +1,56 @@
 const root=document.getElementById("root");
+const state={section:"overview",data:null};
 
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function fmt(v){return Number(v||0).toLocaleString()}
 function login(){
-  root.innerHTML='<main class="login"><h1>🔥 FLAMES Admin</h1><p class="muted">Private first-party analytics. Anonymous usage data only.</p><input id="pw" type="password" placeholder="Admin password" autocomplete="current-password"><button class="btn" onclick="doLogin()">Open dashboard</button><div id="err"></div></main>';
+ root.innerHTML='<main class="login-page"><section class="login-card"><div class="login-mark">F</div><div class="kicker">FLAMES CONTROL CENTER</div><h1>Admin sign in</h1><p>Private analytics and product operations. This area is restricted to authorized administrators.</p><form class="form" onsubmit="doLogin(event)"><label>ADMIN PASSWORD<input id="pw" type="password" autocomplete="current-password" required></label><button class="primary">Open dashboard</button></form><div id="err"></div><a class="back" href="/">← Back to FLAMES</a></section></main>';
 }
-async function doLogin(){
-  const password=document.getElementById("pw").value;
-  const r=await fetch("/api/admin-analytics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password})});
-  if(r.ok)load();else{document.getElementById("err").className="error";document.getElementById("err").textContent="Invalid password or server configuration."}
+async function doLogin(e){
+ e.preventDefault();const err=document.getElementById("err");err.className="status";err.textContent="Checking access…";
+ try{const r=await fetch("/api/admin-analytics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:document.getElementById("pw").value})});if(!r.ok)throw 0;await load()}
+ catch{err.className="status error";err.textContent="Invalid password or server configuration."}
+}
+function shell(){
+ const items=[["overview","Overview"],["users","Users"],["visitors","Web Visitors"],["games","FLAMES Games"],["questions","Questions"],["feedback","Feedback"],["analytics","Analytics"]];
+ root.innerHTML='<aside class="sidebar" id="sidebar"><div class="brand"><div class="brand-mark">F</div><div>FLAMES <span>ADMIN</span></div></div><nav class="nav">'+items.map(x=>'<button class="'+(state.section===x[0]?"active":"")+'" onclick="showSection(\''+x[0]+'\')">'+x[1]+'</button>').join("")+'</nav><div class="side-foot">Private operations dashboard<br>Supabase · first-party data</div></aside><main class="main"><header class="top"><div><button class="icon-btn mobile-menu" onclick="document.getElementById(\'sidebar\').classList.toggle(\'open\')">☰</button><div class="kicker">FLAMES / ADMIN</div><h1 class="title" id="page-title">Overview</h1></div><div class="top-actions"><select class="control" id="days" onchange="load()"><option value="7">Last 7 days</option><option value="14">Last 14 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option></select><button class="control" onclick="load()">Refresh</button></div></header><div id="content"></div></main>';
 }
 async function load(){
-  root.innerHTML='<main class="wrap"><header class="top"><div><div class="brand">🔥 <b>FLAMES</b> ADMIN</div><div class="muted">First-party analytics · last 7 days</div></div><button class="btn" onclick="load()">Refresh</button></header><div id="content" class="status">Loading analytics…</div></main>';
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),10000);
-  let r;
-  try{r=await fetch("/api/admin-analytics?days=7",{signal:controller.signal,cache:"no-store"});}
-  catch(e){clearTimeout(timeout);document.getElementById("content").innerHTML="<strong>Analytics request failed</strong><p class=\"muted\">"+esc(e.name==="AbortError"?"The analytics API timed out after 10 seconds.":"Could not reach the analytics API.")+"</p>";return}
-  finally{clearTimeout(timeout)}
-  if(r.status===401)return login();
-  const d=await r.json().catch(()=>({error:"Invalid analytics response"}));
-  if(!r.ok){document.getElementById("content").innerHTML='<strong>Analytics unavailable</strong><p class="muted">'+esc(d.error)+'</p>';return}
-  const events=d.events||{};
-  const rows=Object.entries(events).sort((a,b)=>b[1]-a[1]).map(([name,count])=>'<div class="event"><span>'+esc(name)+'</span><strong>'+count+'</strong></div>').join("");
-  const daily=Object.entries(d.daily||{}).sort().reverse().map(([day,count])=>'<div class="event"><span>'+esc(day)+'</span><strong>'+count+'</strong></div>').join("");
-  document.getElementById("content").outerHTML=
-    '<section class="cards">'+
-      card("UNIQUE VISITORS",d.uniqueVisitors)+card("PAGEVIEWS",d.pageviews)+card("MATCHES COMPLETED",d.matchesCompleted)+
-    '</section>'+
-    '<section class="cards">'+
-      card("MATCHES STARTED",d.matchesStarted)+card("CLASSIC",d.classicMatches)+card("SECRET CRUSH",d.secretCrushMatches)+
-    '</section>'+
-    '<section class="panel"><h2>Engagement</h2><table>'+
-      row("Shares",d.shares)+row("Downloads",d.downloads)+row("Invites",d.invites)+row("Copies",d.copies)+row("Total tracked events",d.totalEvents)+
-    '</table></section>'+
-    '<section class="panel"><h2>Feedback</h2><div class="feedback-admin">'+((d.feedback||[]).length?d.feedback.map(f=>'<article class="feedback-item"><div class="feedback-meta"><b>'+esc((f.rating||"No rating").replace(/_/g," "))+'</b><span>'+esc(f.category||"No category")+' · '+esc(new Date(f.created_at).toLocaleString())+'</span></div><p>'+esc(f.message||"No written feedback.")+'</p></article>').join(""):'<p class="muted">No feedback yet.</p>')+'</div></section><section class="panel"><h2>FLAMES results</h2><div>'+
-      Object.entries(d.results||{}).sort((a,b)=>b[1]-a[1]).map(([name,count])=>'<div class="event"><span>'+esc(name)+'</span><strong>'+count+'</strong></div>').join("")+
-    '</div></section>'+
-    '<section class="panel"><h2>Usage by day</h2><div>'+daily+'</div></section>'+
-    '<section class="panel"><h2>All tracked events</h2><div>'+rows+'</div></section>'+
-    '<p class="muted footer-note">No names, form inputs, IP addresses, or personal profiles are stored by this analytics system.</p>';
+ if(!root.querySelector(".sidebar"))shell();
+ document.getElementById("content").innerHTML='<div class="status">Loading admin data…</div>';
+ const days=document.getElementById("days")?.value||7;let r;
+ try{r=await fetch("/api/admin-analytics?days="+days,{cache:"no-store"})}catch{document.getElementById("content").innerHTML='<div class="status error">Could not reach the analytics service.</div>';return}
+ if(r.status===401){login();return}
+ const d=await r.json().catch(()=>({error:"Invalid response"}));if(!r.ok){document.getElementById("content").innerHTML='<div class="status error">'+esc(d.error)+'</div>';return}
+ state.data=d;render();
 }
-function card(label,value){return '<div class="card"><small>'+label+'</small><div class="num">'+Number(value||0).toLocaleString()+'</div></div>'}
-function row(label,value){return '<tr><td>'+label+'</td><td>'+Number(value||0).toLocaleString()+'</td></tr>'}
-function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function showSection(s){state.section=s;document.getElementById("sidebar")?.classList.remove("open");render()}
+function render(){
+ const d=state.data||{},title={overview:"Overview",users:"Users",visitors:"Web Visitors",games:"FLAMES Games",questions:"Questions",feedback:"Feedback",analytics:"Analytics"}[state.section];
+ document.getElementById("page-title").textContent=title;const c=document.getElementById("content");
+ if(state.section==="overview")c.innerHTML=overview(d);
+ else if(state.section==="users")c.innerHTML=users(d);
+ else if(state.section==="visitors")c.innerHTML=visitors(d);
+ else if(state.section==="games")c.innerHTML=games(d);
+ else if(state.section==="questions")c.innerHTML=questions(d);
+ else if(state.section==="feedback")c.innerHTML=feedback(d);
+ else c.innerHTML=analytics(d);
+}
+function metric(label,value,note=""){return '<article class="metric"><div class="metric-label">'+label+'</div><div class="metric-value">'+fmt(value)+'</div><div class="metric-note">'+note+'</div></article>'}
+function overview(d){
+ const daily=Object.entries(d.daily||{}).sort().slice(-14),max=Math.max(1,...daily.map(x=>x[1]));
+ return '<section class="metrics">'+metric("REAL USERS",d.realUsers,"registered profiles")+metric("WEB UNIQUE IDs",d.uniqueVisitors,"persistent browser IDs")+metric("ACTIVE TODAY",d.activeToday,"visitors or users")+metric("GAMES PLAYED",d.matchesCompleted,"completed matches")+'</section><section class="metrics" style="margin-top:10px">'+metric("GAMES TODAY",d.gamesToday,"completed today")+metric("NEW USERS",d.newUsers,"selected period")+metric("QUESTIONS",d.questions,"created questions")+metric("OPEN FEEDBACK",d.openFeedback,"needs review")+'</section><section class="grid-2"><section class="panel"><div class="panel-head"><h3>Usage activity</h3><span class="tiny">tracked events / day</span></div><div class="chart">'+(daily.length?daily.map(x=>'<div class="bar-col" title="'+esc(x[0])+': '+x[1]+'"><div class="bar" style="height:'+Math.max(3,x[1]/max*180)+'px"></div><div class="bar-label">'+esc(x[0].slice(5))+'</div></div>').join(""):'<div class="empty">No activity yet</div>')+'</div></section><section class="panel"><div class="panel-head"><h3>Product snapshot</h3><span class="pill">LIVE DATA</span></div><div class="stat-list">'+stat("Classic FLAMES",d.classicMatches,"completed classic matches")+stat("Secret Crush",d.secretCrushMatches,"completed secret matches")+stat("Question games",d.questionGames,"created questions")+stat("Feedback",d.feedbackCount,"submitted feedback")+stat("Tracked events",d.totalEvents,"within selected period")+'</div></section></section><section class="grid-3"><section class="panel"><div class="panel-head"><h3>Top FLAMES results</h3></div>'+resultRows(d.results)+'</section><section class="panel"><div class="panel-head"><h3>Device mix</h3></div>'+deviceRows(d.deviceMix)+'</section><section class="panel"><div class="panel-head"><h3>Recent feedback</h3></div>'+feedbackRows(d.feedback,3)+'</section></section>';
+}
+function stat(a,b,c){return '<div class="stat"><div><strong>'+a+'</strong><small>'+c+'</small></div><b>'+fmt(b)+'</b></div>'}
+function resultRows(r){return Object.entries(r||{}).sort((a,b)=>b[1]-a[1]).map(x=>stat(x[0],x[1],"result")).join("")||'<div class="empty">No results yet</div>'}
+function deviceRows(r){return Object.entries(r||{}).sort((a,b)=>b[1]-a[1]).map(x=>stat(x[0],x[1],"tracked events")).join("")||'<div class="empty">No device data</div>'}
+function users(d){const rows=d.users||[];return '<section class="panel"><div class="toolbar"><div><h3 style="margin:0">Registered users</h3><div class="tiny">Real authenticated profiles</div></div><input class="search" placeholder="Search username or name" oninput="filterTable(this,\'users-table\')"></div><div class="table-wrap"><table class="table" id="users-table"><thead><tr><th>Username</th><th>Name</th><th>Streak</th><th>Joined</th><th>Last active</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>@'+esc(x.username||"—")+'</td><td>'+esc(x.display_name||"—")+'</td><td>'+fmt(x.streak_count)+'</td><td>'+date(x.created_at)+'</td><td>'+date(x.updated_at)+'</td></tr>').join("")+'</tbody></table></div></section>'}
+function visitors(d){const rows=d.visitors||[];return '<section class="panel"><div class="toolbar"><div><h3 style="margin:0">Web visitor IDs</h3><div class="tiny">Persistent anonymous browser identifiers</div></div><input class="search" placeholder="Search visitor ID" oninput="filterTable(this,\'visitors-table\')"></div><div class="table-wrap"><table class="table" id="visitors-table"><thead><tr><th>Visitor ID</th><th>Device</th><th>Events</th><th>First seen</th><th>Last seen</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.visitor_id||"—")+'</td><td>'+esc(x.device_type||"—")+'</td><td>'+fmt(x.events)+'</td><td>'+date(x.first_seen)+'</td><td>'+date(x.last_seen)+'</td></tr>').join("")+'</tbody></table></div></section>'}
+function games(d){return '<section class="metrics">'+metric("COMPLETED",d.matchesCompleted,"all match modes")+metric("STARTED",d.matchesStarted,"match sessions")+metric("CLASSIC",d.classicMatches,"classic mode")+metric("SECRET CRUSH",d.secretCrushMatches,"secret mode")+'</section><section class="grid-2"><section class="panel"><div class="panel-head"><h3>Game outcomes</h3></div>'+resultRows(d.results)+'</section><section class="panel"><div class="panel-head"><h3>Engagement</h3></div>'+stat("Shares",d.shares,"share actions")+stat("Downloads",d.downloads,"result downloads")+stat("Invites",d.invites,"invite actions")+stat("Copies",d.copies,"copy actions")+'</section></section>'}
+function questions(d){const rows=d.questionList||[];return '<section class="panel"><div class="toolbar"><div><h3 style="margin:0">Question games</h3><div class="tiny">Created inside FLAMES</div></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Title</th><th>Type</th><th>Prompt</th><th>Created</th><th>Expires</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+esc(x.title||"Untitled")+'</td><td>'+esc(x.kind||"—")+'</td><td>'+esc(x.prompt||"—")+'</td><td>'+date(x.created_at)+'</td><td>'+date(x.expires_at)+'</td></tr>').join("")+'</tbody></table></div></section>'}
+function feedback(d){return '<section class="panel"><div class="panel-head"><h3>Feedback inbox</h3><span class="pill">'+fmt(d.openFeedback)+' OPEN</span></div>'+(d.feedback?.length?d.feedback.map(x=>'<div class="stat"><div><strong>'+esc((x.rating||"No rating").replace(/_/g," "))+'</strong><small>'+esc(x.category||"No category")+' · '+date(x.created_at)+'</small><small>'+esc(x.message||"No written message")+'</small></div><span class="pill">'+esc(x.status||"open")+'</span></div>').join(""):'<div class="empty">No feedback in this period.</div>')+'</section>'}
+function feedbackRows(rows,n){return (rows||[]).slice(0,n).map(x=>'<div class="stat"><div><strong>'+esc(x.rating||"No rating")+'</strong><small>'+esc(x.category||"No category")+'</small></div></div>').join("")||'<div class="empty">No feedback</div>'}
+function analytics(d){return '<section class="grid-2"><section class="panel"><div class="panel-head"><h3>Result distribution</h3><span class="tiny">completed matches</span></div><div class="result-grid">'+Object.entries(d.results||{}).map(x=>'<div class="result-item"><b>'+esc(x[0])+'</b><span>'+fmt(x[1])+'</span><strong>matches</strong></div>').join("")+'</div></section><section class="panel"><div class="panel-head"><h3>Device distribution</h3></div>'+deviceRows(d.deviceMix)+'</section></section><section class="panel" style="margin-top:13px"><div class="panel-head"><h3>Event volume</h3><span class="tiny">'+fmt(d.totalEvents)+' tracked events</span></div>'+resultRows(d.events)+'</section>'}
+function date(v){return v?new Date(v).toLocaleString():"—"}
+function filterTable(input,id){const q=input.value.toLowerCase();document.querySelectorAll("#"+id+" tbody tr").forEach(r=>r.style.display=r.textContent.toLowerCase().includes(q)?"":"none")}
 load();
