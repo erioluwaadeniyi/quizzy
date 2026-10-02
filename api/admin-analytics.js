@@ -16,7 +16,7 @@ export default async function handler(req,res){
    query("flames_profiles?select=id,username,display_name,streak_count,created_at,updated_at&order=created_at.desc&limit=500"),
    query("flames_matches?select=id,user_id,name_a,name_b,result_key,percent,secret_mode,created_at&created_at=gte."+encodeURIComponent(since)+"&order=created_at.desc&limit=500"),
    query("flames_games?select=id,creator_id,kind,title,prompt,created_at,expires_at&created_at=gte."+encodeURIComponent(since)+"&order=created_at.desc&limit=500"),
-   query("flames_feedback?select=id,rating,category,message,path,status,created_at&created_at=gte."+encodeURIComponent(since)+"&order=created_at.desc&limit=500")
+   query("flames_feedback?select=id,rating,category,message,path,created_at&created_at=gte."+encodeURIComponent(since)+"&order=created_at.desc&limit=500")
   ]);
   const sessions=new Set(),visitors=new Map(),eventsBy={},results={},daily={},deviceMix={};let classic=0,secret=0,gamesToday=0,activeToday=new Set();
   for(const e of events){
