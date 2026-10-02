@@ -294,31 +294,79 @@ export default function LandingPage(){
 
         <button type="button" className="invite-home" onClick={inviteFriends}>🔥 Invite friends to play <b>↗</b></button>
 
-        <section className="flames-info-section how-flames">
-          <div className="info-heading"><small>THE CLASSIC GAME</small><h2>How FLAMES works.</h2><p>It is simple on purpose. Put two names in, let the letters do their thing, and see what comes out.</p></div>
-          <div className="how-grid">
-            <div className="how-item"><span>01</span><div><h3>Enter two names</h3><p>Use your name and the person you want to check.</p></div></div>
-            <div className="how-item"><span>02</span><div><h3>FLAMES does the math</h3><p>Matching letters are crossed out and the classic elimination game runs.</p></div></div>
-            <div className="how-item"><span>03</span><div><h3>Reveal the result</h3><p>One of six letters remains: Friends, Lovers, Affection, Marriage, Enemies or Siblings.</p></div></div>
+        <section className="flames-info-section feature-world">
+          <div className="info-heading feature-heading">
+            <small>MORE WAYS TO PLAY</small>
+            <h2>FLAMES is more than a result.</h2>
+            <p>Play with the people you actually know. Ask your own questions, test your friendships, keep crushes secret, and share the moments that make everyone curious.</p>
+          </div>
+          <div className="feature-showcase">
+            <article className="feature-panel feature-know">
+              <div className="feature-panel-top"><span>01</span><b>👀</b></div>
+              <div className="feature-panel-copy">
+                <small>HOW WELL DO THEY KNOW YOU?</small>
+                <h3>Think they know you?</h3>
+                <p>Create a question about yourself, send it to a friend, and find out whether they actually get you.</p>
+                <span className="feature-action">Test your people <i>↗</i></span>
+              </div>
+              <div className="feature-preview question-preview">
+                <div className="preview-label">YOUR QUESTION</div>
+                <strong>Who knows me best?</strong>
+                <div className="preview-options"><span>A. My bestie</span><span>B. My sibling</span><span>C. Nobody 😂</span></div>
+              </div>
+            </article>
+
+            <article className="feature-panel feature-ask">
+              <div className="feature-panel-top"><span>02</span><b>✦</b></div>
+              <div className="feature-panel-copy">
+                <small>ASK YOUR QUESTIONS</small>
+                <h3>You make the question.</h3>
+                <p>Turn any inside joke, debate, hot take, or random thought into a question your friends can answer.</p>
+                <span className="feature-action">Make one of your own <i>↗</i></span>
+              </div>
+              <div className="feature-preview ask-preview">
+                <div className="preview-label">YOUR QUESTION</div>
+                <strong>Who would survive longest on a road trip?</strong>
+                <div className="preview-pill-row"><span>Me 😭</span><span>You 😂</span><span>Neither</span></div>
+              </div>
+            </article>
+
+            <article className="feature-panel feature-secret">
+              <div className="feature-panel-top"><span>03</span><b>💘</b></div>
+              <div className="feature-panel-copy">
+                <small>KEEP IT SECRET</small>
+                <h3>Your crush stays hidden.</h3>
+                <p>Run a Secret Crush match when you want the fun of FLAMES without putting the other name on the result.</p>
+                <span className="feature-action">Try Secret Crush <i>↗</i></span>
+              </div>
+              <div className="feature-preview secret-preview">
+                <div className="secret-orbit"><span>A</span><i>♥</i><span>?</span></div>
+                <strong>You × Secret Crush</strong>
+                <small>Private on your device</small>
+              </div>
+            </article>
           </div>
         </section>
 
-        <section className="flames-info-section meaning-section">
-          <div className="info-heading centered"><small>SIX POSSIBILITIES</small><h2>What will FLAMES say?</h2></div>
-          <div className="meaning-grid">
-            {LETTERS.map(k=><div className="meaning-card" key={k}><b>{k}</b><div><strong>{RESULTS[k].name}</strong><span>{RESULTS[k].name==="Friends"?"Bestie energy 🤝":RESULTS[k].name==="Lovers"?"Romance detected ❤️":RESULTS[k].name==="Affection"?"Something sweet 💫":RESULTS[k].name==="Marriage"?"Skipping straight ahead 💍":RESULTS[k].name==="Enemies"?"Chaos incoming ⚡":"Family vibes 🫶"}</span></div></div>)}
+        <section className="flames-info-section play-loop-section">
+          <div className="play-loop">
+            <span>PLAY IT YOUR WAY</span>
+            <div className="play-loop-words">
+              <b>PLAY</b><i>→</i><b>ASK</b><i>→</i><b>CHALLENGE</b><i>→</i><b>SHARE</b>
+            </div>
+            <p>One quick game can turn into a question, a challenge, a group-chat argument, or a result worth sending.</p>
           </div>
         </section>
 
         <section className="flames-info-section final-invite-section">
           <div className="final-invite-inner">
             <div className="final-flame"><Flame/></div>
-            <div><small>READY FOR ANOTHER ONE?</small><h2>Send FLAMES to someone.</h2><p>Drop the link in the group chat, challenge a friend, or keep your crush result to yourself. 👀</p></div>
+            <div><small>START SOMETHING</small><h2>Pick a person. Make it interesting.</h2><p>Play FLAMES, ask a question, or send a challenge to someone you know.</p></div>
             <button type="button" onClick={inviteFriends}>Invite someone ↗</button>
           </div>
         </section>
       </>}
-
+      
       {loading&&<div className="loading">
         <div className="names"><b>{a.trim()}</b><span><Flame/></span><b>{secretMode?"Secret Crush":b.trim()}</b></div>
         <div className="ring"><div><Flame/></div></div>
