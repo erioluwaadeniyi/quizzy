@@ -127,7 +127,7 @@ export default function AdminDashboard() {
 
   const metrics = useMemo(function () {
     const uniqueVisitors = new Set(
-      events.map(function (event) { return event.visitor_id; }).filter(Boolean)
+      events.map(function (event) { return event.visitor_id || event.session_id; }).filter(Boolean)
     );
 
     const activeToday = new Set(
@@ -140,8 +140,8 @@ export default function AdminDashboard() {
       users: profiles.length,
       uniqueVisitors: uniqueVisitors.size,
       activeToday: activeToday.size,
-      games: matches.length,
-      gamesToday: matches.filter(function (match) { return isToday(match.created_at); }).length,
+      games: events.filter(function (event) { return event.event_name === "match_completed"; }).length,
+      gamesToday: events.filter(function (event) { return event.event_name === "match_completed" && isToday(event.created_at); }).length,
       questions: questions.length,
       questionsToday: questions.filter(function (question) { return isToday(question.created_at); }).length,
       newUsersToday: profiles.filter(function (profile) { return isToday(profile.created_at); }).length,
@@ -177,6 +177,10 @@ export default function AdminDashboard() {
 
     return rows;
   }, [events, range]);
+
+  const completedEvents = events.filter(function (event) { return event.event_name === "match_completed"; });
+  const resultCounts = completedEvents.reduce(function (acc, event) { acc[event.result_key || "unknown"] = (acc[event.result_key || "unknown"] || 0) + 1; return acc; }, {});
+  const modeCounts = completedEvents.reduce(function (acc, event) { const mode = event.mode || "classic"; acc[mode] = (acc[mode] || 0) + 1; return acc; }, {});
 
   const maxVisitors = Math.max(
     1,
@@ -302,11 +306,11 @@ export default function AdminDashboard() {
               </div>
 
               <div className="admin-card">
-                <h3>Current totals</h3>
+                <h3>Game intelligence</h3>
                 <div className="admin-list">
-                  <StatRow label="Classic / Secret matches" value={matches.length} />
-                  <StatRow label="Questions created" value={questions.length} />
-                  <StatRow label="Feedback received" value={feedback.length} />
+                  <StatRow label="Classic games" value={modeCounts.classic || 0} />
+                  <StatRow label="Secret Crush" value={modeCounts.secret_crush || 0} />
+                  <StatRow label="Question games" value={questions.length} />
                   <StatRow label="Tracked events" value={events.length} />
                 </div>
               </div>
@@ -373,6 +377,39 @@ export default function AdminDashboard() {
         ) : null}
 
         {page === "feedback" ? (
+          <AdminTable
+            title="Feedback inbox"
+            rows={filteredRows(feedback, ["category", "rating", "message", "status"])}
+            columns={[
+              ["rating", "Rating"],
+              ["category", "Category"],
+              ["message", "Message"],
+              ["status", "Status"],
+              ["created_at", "Received"]
+            ]}
+          />
+        ) : null}
+
+        {page === "analytics" ? (
+          <section className="admin-analytics-grid">
+            <div className="admin-card">
+              <div className="admin-card-head"><h3>Result distribution</h3><span className="legend">All completed games</span></div>
+              <div className="admin-result-grid">
+                {["F","L","A","M","E","S"].map(function (key) {
+                  return <div className="admin-result-item" key={key}><strong>{key}</strong><span>{formatNumber(resultCounts[key] || 0)}</span><small>{key === "F" ? "Friends" : key === "L" ? "Lovers" : key === "A" ? "Affection" : key === "M" ? "Marriage" : key === "E" ? "Enemies" : "Siblings"}</small></div>;
+                })}
+              </div>
+            </div>
+            <div className="admin-card">
+              <div className="admin-card-head"><h3>Device mix</h3><span className="legend">Tracked visits</span></div>
+              <div className="admin-list">
+                {["mobile","tablet","desktop"].map(function (device) {
+                  return <StatRow key={device} label={device.charAt(0).toUpperCase() + device.slice(1)} value={events.filter(function (event) { return event.device_type === device; }).length} />;
+                })}
+              </div>
+            </div>
+          </section>
+        ) : null}
           <AdminTable
             title="Feedback inbox"
             rows={filteredRows(feedback, ["category", "rating", "message", "status"])}
