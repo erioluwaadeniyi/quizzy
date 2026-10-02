@@ -1,0 +1,383 @@
+import { useEffect, useState } from "react";
+import { supabase } from "./supabase.js";
+import { signOut } from "./auth.js";
+import { trackEvent } from "./analytics.js";
+import { submitFeedback } from "./feedback.js";
+import "./LandingPage.css";
+
+const RESULTS = {
+  F:{name:"Friends",emoji:"🤝",title:"THE DAY-ONE DUO",quote:"Some connections just make every random day better.",messages:["Best-friend energy 😂","No drama, just vibes. These names are screaming friendship 😂.","Plot twist: the perfect person to send memes to all day."]},
+  L:{name:"Lovers",emoji:"❤️",title:"IT'S GIVING ROM-COM",quote:"Okay… somebody might want to text first.",messages:["Okayyy, FLAMES is seeing chemistry. We are not saying anything… but 👀.","Somebody might want to send a risky text tonight 👀❤️.","The names are giving romance. Proceed with confidence… or at least curiosity 😂."]},
+  A:{name:"Affection",emoji:"💫",title:"THE SOFT SPOT",quote:"A little extra care can say a lot.",messages:["Soft vibes detected. Somebody definitely cares a little extra 💫.","There is a suspicious amount of sweetness hiding in these names 😂.","Not quite a movie romance, but definitely something warm here."]},
+  M:{name:"Marriage",emoji:"💍",title:"CALM DOWN 😂",quote:"FLAMES just skipped several chapters.",messages:["Straight to the wedding plans? FLAMES said skip the talking stage 😂💍.","Someone better start looking at ring sizes. The game has spoken 😂.","FLAMES really looked at these names and said: long-term commitment."]},
+  E:{name:"Enemies",emoji:"⚡",title:"CHAOS BUDDIES",quote:"At least the rivalry should be entertaining.",messages:["At least the rivalry will never be boring 😂⚡.","The names entered the room and immediately chose violence.","You two might argue over who gets the last slice. Good luck 😂."]},
+  S:{name:"Siblings",emoji:"🫶",title:"SAME FAMILY ENERGY",quote:"The chaos feels suspiciously familiar.",messages:["The game said family energy. Please stop fighting over the remote 😂.","Very much: 'that's my sibling, don't touch them' energy 🫶.","FLAMES sees a familiar bond… and probably some annoying each other too 😂."]}
+};
+const LETTERS=["F","L","A","M","E","S"];
+
+function flames(a,b){
+  let x=a.toLowerCase().replace(/[^a-z]/g,"").split("");
+  let y=b.toLowerCase().replace(/[^a-z]/g,"").split("");
+  if(!x.length||!y.length)return null;
+  for(let i=0;i<x.length;i++){const j=y.indexOf(x[i]);if(j>-1){x[i]="";y[j]="";}}
+  const remaining=x.filter(Boolean).length+y.filter(Boolean).length;
+  if(!remaining)return "F";
+  let pool=[...LETTERS],index=0;
+  while(pool.length>1){index=(index+remaining-1)%pool.length;pool.splice(index,1);}
+  return pool[0];
+}
+
+function score(a,b){
+  const value=a.trim().toLowerCase()+":"+b.trim().toLowerCase();
+  let hash=0;
+  for(let i=0;i<value.length;i++)hash=(hash*31+value.charCodeAt(i))>>>0;
+  return 58+(hash%40);
+}
+
+function Flame(){
+  return <svg className="flame" viewBox="0 0 48 56" aria-hidden="true">
+    <path d="M25.8 2.5c2.5 10.7-5.8 14.4-3.5 22.1 1.1 3.8 4.2 5.2 6.7 2.4 3.1-3.5 1.7-9.6 1.7-9.6 7.9 6.1 12.1 13.1 11.4 21.3C41.2 48.9 33.8 54 24.1 54 13.4 54 5.8 47.5 5.8 38.5c0-7.8 4.4-14.7 11.5-19.6-.7 6.2 1.5 9.6 4.2 10.4-1.7-8.5 4.8-15.1 4.3-26.8Z"/>
+    <path className="inner" d="M25.7 25.4c4.1 4.3 6.2 8.4 5.8 12.7-.4 4.7-3.3 7.5-7.5 7.5-4.7 0-7.8-3.3-7.8-7.8 0-3.3 1.5-6.3 4.4-9.1-.1 3.5 1.2 5.3 2.8 5.9-.5-3.4.9-6.4 2.3-9.2Z"/>
+  </svg>;
+}
+
+function escapeXml(value){
+  return String(value).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+}
+
+function makeResultPng(nameA,nameB,resultKey,percent,message){
+  return new Promise(resolve=>{
+    const result=RESULTS[resultKey];
+    const pairA=escapeXml(nameA);
+    const pairB=escapeXml(nameB);
+    const svg=[
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">',
+      '<defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff4d8"/><stop offset="55%" stop-color="#fffaf2"/><stop offset="100%" stop-color="#ffd6ba"/></linearGradient></defs>',
+      '<rect width="1080" height="1350" rx="72" fill="url(#bg)"/>',
+      '<circle cx="910" cy="150" r="150" fill="#ff9d3d" opacity=".13"/><circle cx="140" cy="1170" r="190" fill="#d95832" opacity=".10"/>',
+      '<rect x="70" y="70" width="940" height="1210" rx="52" fill="#ffffff" fill-opacity=".82" stroke="#eadfd2" stroke-width="3"/>',
+      '<rect x="438" y="112" width="204" height="56" rx="17" fill="#17120f"/>',
+      '<text x="540" y="149" text-anchor="middle" fill="#fff" font-family="Arial,sans-serif" font-size="22" font-weight="800" letter-spacing="5">FLAMES</text>',
+      '<text x="540" y="220" text-anchor="middle" fill="#a08f82" font-family="Arial,sans-serif" font-size="16" font-weight="700" letter-spacing="4">RESULT REVEALED</text>',
+      '<text x="540" y="310" text-anchor="middle" fill="#756b62" font-family="Arial,sans-serif" font-size="25" font-weight="700">'+pairA+' × '+pairB+'</text>',
+      '<circle cx="540" cy="465" r="105" fill="#fff1d0" stroke="#f2dfb7" stroke-width="3"/>',
+      '<text x="540" y="500" text-anchor="middle" font-family="Arial,sans-serif" font-size="82">'+escapeXml(result.emoji)+'</text>',
+      '<text x="540" y="625" text-anchor="middle" fill="#a19589" font-family="Arial,sans-serif" font-size="18" font-weight="700" letter-spacing="5">THE FLAMES SAYS</text>',
+      '<text x="540" y="715" text-anchor="middle" fill="#d95832" font-family="Arial,sans-serif" font-size="82" font-weight="800">'+escapeXml(result.name)+'</text>',
+      '<text x="540" y="778" text-anchor="middle" fill="#a08f82" font-family="Arial,sans-serif" font-size="19" font-weight="700">'+escapeXml(result.title)+'</text>',
+      '<text x="540" y="835" text-anchor="middle" fill="#70675f" font-family="Arial,sans-serif" font-size="22">'+escapeXml(message)+'</text>',
+      '<text x="540" y="970" text-anchor="middle" fill="#8d8176" font-family="Arial,sans-serif" font-size="17" font-weight="700" letter-spacing="3">PLAYFUL COMPATIBILITY</text>',
+      '<text x="540" y="1040" text-anchor="middle" fill="#17120f" font-family="Arial,sans-serif" font-size="54" font-weight="800">'+percent+'%</text>',
+      '<rect x="180" y="1085" width="720" height="16" rx="8" fill="#eee6dc"/><rect x="180" y="1085" width="'+(percent*7.2)+'" height="16" rx="8" fill="#d95832"/>',
+      '<text x="540" y="1165" text-anchor="middle" fill="#a79d94" font-family="Arial,sans-serif" font-size="16">Just for fun · Not a real measure of compatibility</text>',
+      '</svg>'
+    ].join("");
+    const url=URL.createObjectURL(new Blob([svg],{type:"image/svg+xml;charset=utf-8"}));
+    const image=new Image();
+    image.onload=()=>{
+      const canvas=document.createElement("canvas");
+      canvas.width=1080;canvas.height=1350;
+      const ctx=canvas.getContext("2d");
+      ctx.drawImage(image,0,0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(png=>resolve(png),"image/png");
+    };
+    image.onerror=()=>{URL.revokeObjectURL(url);resolve(null)};
+    image.src=url;
+  });
+}
+
+export default function LandingPage(){
+  const [user,setUser]=useState(null),[profile,setProfile]=useState(null),[streak,setStreak]=useState(0),[savedCount,setSavedCount]=useState(0);
+  const [authReady,setAuthReady]=useState(false),[a,setA]=useState(""),[b,setB]=useState(""),[key,setKey]=useState(null),[loading,setLoading]=useState(false);
+  const [secretMode,setSecretMode]=useState(false),[quipIndex,setQuipIndex]=useState(0),[copied,setCopied]=useState(false),[downloaded,setDownloaded]=useState(false);
+  const [shareOpen,setShareOpen]=useState(false),[shareNotice,setShareNotice]=useState(""),[nudgeDismissed,setNudgeDismissed]=useState(false);
+  const [feedbackOpen,setFeedbackOpen]=useState(false),[feedbackRating,setFeedbackRating]=useState(""),[feedbackCategory,setFeedbackCategory]=useState(""),[feedbackMessage,setFeedbackMessage]=useState(""),[feedbackSent,setFeedbackSent]=useState(false),[feedbackSending,setFeedbackSending]=useState(false);
+  const [miniPromo,setMiniPromo]=useState(()=>{try{return localStorage.getItem("flames_mini_promo_dismissed")!=="1"}catch{return true}});
+
+  useEffect(()=>{
+    let active=true;
+    (async()=>{
+      const {data}=await supabase.auth.getUser();
+      if(!active)return;
+      const u=data?.user||null;
+      setUser(u);
+      if(u){
+        const [{data:p},{data:m}]=await Promise.all([
+          supabase.from("flames_profiles").select("*").eq("id",u.id).single(),
+          supabase.from("flames_matches").select("*").eq("user_id",u.id).order("created_at",{ascending:false}).limit(100)
+        ]);
+        const today=new Date().toISOString().slice(0,10);
+        let nextStreak=p?.streak_count||0;
+        if(p&&p.last_active_date!==today){
+          const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+          nextStreak=p.last_active_date===yesterday?(p.streak_count||0)+1:1;
+          const {data:updated}=await supabase.from("flames_profiles").update({streak_count:nextStreak,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",u.id).select().single();
+          if(updated)Object.assign(p,updated);
+        }
+        setProfile(p||null);setStreak(nextStreak);setSavedCount(m?.length||0);
+      }
+      setAuthReady(true);
+    })();
+    const {data:sub}=supabase.auth.onAuthStateChange((_,session)=>{
+      const u=session?.user||null;
+      if(!u){setUser(null);setProfile(null);setStreak(0);setSavedCount(0)}
+    });
+    return()=>{active=false;sub.subscription.unsubscribe()};
+  },[]);
+
+  const result=key?RESULTS[key]:null;
+  const pct=key?score(a,b):0;
+  const displayPair=secretMode ? a.trim()+" × Secret Crush" : a.trim()+" × "+b.trim();
+
+  const reset=()=>{
+    setKey(null);setLoading(false);setCopied(false);setDownloaded(false);setNudgeDismissed(false);
+  };
+
+  const saveMatch=async(resultKey,message)=>{
+    if(!user)return;
+    const {error}=await supabase.from("flames_matches").insert({
+      user_id:user.id,name_a:a.trim(),name_b:secretMode?"":b.trim(),result_key:resultKey,
+      percent:score(a,b),message,secret_mode:secretMode
+    });
+    if(!error)setSavedCount(v=>v+1);
+  };
+
+  const start=async e=>{
+    e.preventDefault();
+    if(!a.trim()||!b.trim()||loading)return;
+    trackEvent("match_started",{mode:secretMode?"secret_crush":"classic"});
+    setLoading(true);setKey(null);setCopied(false);setDownloaded(false);setNudgeDismissed(false);
+    const matchResult=flames(a,b);
+    const list=RESULTS[matchResult].messages;
+    const qi=(a.length+b.length+Date.now())%list.length;
+    setQuipIndex(qi);
+    await new Promise(r=>setTimeout(r,1650));
+    setKey(matchResult);setLoading(false);
+    trackEvent("match_completed",{mode:secretMode?"secret_crush":"classic",result:matchResult});
+    await saveMatch(matchResult,list[qi]);
+  };
+
+  const inviteFriends=async()=>{
+    trackEvent("invite_clicked");
+    const text="🔥 Come play FLAMES with me! Put two names in and see what the game says.";
+    if(navigator.share){
+      try{await navigator.share({title:"Play FLAMES",text,url:location.href});return}catch{}
+    }
+    window.open("https://wa.me/?text="+encodeURIComponent(text+" "+location.href),"_blank","noopener,noreferrer");
+  };
+
+  const shareText=()=>secretMode
+    ? "I played FLAMES in Secret Crush mode and got "+result.name+" 🔥 Try yours!"
+    : "I played FLAMES with "+a.trim()+" + "+b.trim()+" and got "+result.name+" 🔥 Try yours!";
+
+  const openShareUrl=url=>window.open(url,"_blank","noopener,noreferrer");
+
+  const copy=async()=>{
+    if(!result)return;
+    trackEvent("copy_clicked",{result:key});
+    try{
+      await navigator.clipboard.writeText((secretMode?"FLAMES result: "+a.trim()+" + Secret Crush = ":"FLAMES result: "+a.trim()+" + "+b.trim()+" = ")+result.name+" 🔥");
+      setCopied(true);window.setTimeout(()=>setCopied(false),1800);
+    }catch{}
+  };
+
+  const download=async()=>{
+    if(!result)return;
+    trackEvent("download_clicked",{result:key});
+    const png=await makeResultPng(a.trim(),secretMode?"SECRET CRUSH":b.trim(),key,pct,result.messages[quipIndex]);
+    if(png){
+      const u=URL.createObjectURL(png),tag=document.createElement("a");
+      tag.href=u;tag.download="flames-result.png";document.body.appendChild(tag);tag.click();tag.remove();URL.revokeObjectURL(u);
+      setDownloaded(true);window.setTimeout(()=>setDownloaded(false),2200);
+    }
+  };
+
+  const shareCard=async()=>{
+    if(!result)return;
+    trackEvent("share_clicked",{mode:secretMode?"secret_crush":"classic",result:key});
+    try{
+      const png=await makeResultPng(a.trim(),secretMode?"SECRET CRUSH":b.trim(),key,pct,result.messages[quipIndex]);
+      if(!png)throw new Error("No card");
+      const file=new File([png],"flames-result.png",{type:"image/png"});
+      if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({title:"My FLAMES result",text:shareText(),files:[file]});
+        setShareOpen(false);return;
+      }
+      const u=URL.createObjectURL(png),tag=document.createElement("a");
+      tag.href=u;tag.download="flames-result.png";document.body.appendChild(tag);tag.click();tag.remove();URL.revokeObjectURL(u);
+      setShareNotice("Your result card was downloaded. You can now post it anywhere.");
+    }catch{}
+  };
+
+  const shareTo=platform=>{
+    if(!result)return;
+    trackEvent("share_clicked",{mode:secretMode?"secret_crush":"classic",result:key});
+    const text=shareText(),url=location.href;
+    if(platform==="whatsapp")openShareUrl("https://wa.me/?text="+encodeURIComponent(text+" "+url));
+    else if(platform==="x")openShareUrl("https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url));
+    else if(platform==="facebook")openShareUrl("https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(url));
+    else if(platform==="threads")openShareUrl("https://www.threads.net/intent/post?text="+encodeURIComponent(text+" "+url));
+    else if(platform==="reddit")openShareUrl("https://www.reddit.com/submit?url="+encodeURIComponent(url)+"&title="+encodeURIComponent("My FLAMES result"));
+    else if(platform==="discord"){
+      try{navigator.clipboard.writeText(text+" "+url)}catch{}
+      openShareUrl("https://discord.com/app");
+      setShareNotice("Result text copied. Paste it into the Discord chat you want.");
+    }else if(platform==="instagram")shareCard();
+  };
+
+  const sendFeedback=async()=>{
+    if(feedbackSending||(!feedbackRating&&!feedbackMessage.trim()))return;
+    setFeedbackSending(true);
+    const ok=await submitFeedback({
+      rating:feedbackRating||null,category:feedbackCategory||null,message:feedbackMessage.trim()||null,path:location.pathname
+    });
+    setFeedbackSending(false);
+    if(ok){
+      setFeedbackSent(true);setFeedbackMessage("");setFeedbackRating("");setFeedbackCategory("");
+      window.setTimeout(()=>{setFeedbackSent(false);setFeedbackOpen(false)},1400);
+    }
+  };
+
+  const dismissMiniPromo=()=>{
+    setMiniPromo(false);
+    try{localStorage.setItem("flames_mini_promo_dismissed","1")}catch{}
+  };
+
+  if(!authReady)return <main className="landing-app dashboard-boot"><div className="dashboard-brand-mark"><Flame/></div><span>Opening FLAMES…</span></main>;
+
+  return <main className={"landing-app app "+(secretMode?"secret-mode":"")}>
+    <div className="glow g1"/><div className="glow g2"/>
+    <header className="main-navbar">
+      <button className="brand" type="button" onClick={reset} aria-label="Back to FLAMES home">
+        <span className="brand-icon"><img src="/favicon.svg" alt="" /></span><span className="brand-word">FLAMES</span>
+      </button>
+      <div className="header-right">
+        <div className="fun"><i/> Just for fun</div>
+        {user
+          ? <div className="header-auth"><a className="header-link-button" href="/app">Open FLAMES</a><button className="header-logout" onClick={async()=>{await signOut();window.location.reload()}}>Log out</button></div>
+          : <div className="header-auth"><a className="header-link-button" href="/login">Log in</a><a className="header-link-button header-signup" href="/register">Create account</a></div>}
+      </div>
+    </header>
+
+    {user&&<div className="account-strip">
+      <div className="account-live"><span className="account-dot"/><b>@{profile?.username||"flames"}</b><small>connected</small></div>
+      <div className="account-stats"><span>🔥 {streak} day streak</span><span>✦ {savedCount} saved {savedCount===1?"match":"matches"}</span></div>
+      <button onClick={async()=>{await signOut();window.location.reload()}}>Log out</button>
+    </div>}
+
+    <section className="shell">
+      {!key&&!loading&&<>
+        <div className="mode-switch">
+          <button type="button" className={!secretMode?"active":""} onClick={()=>setSecretMode(false)}>Classic FLAMES</button>
+          <button type="button" className={secretMode?"active":""} onClick={()=>setSecretMode(true)}>💘 Secret Crush</button>
+        </div>
+
+        <div className="hero">
+          <small>{secretMode?"02 · KEEP IT SECRET":"01 · NAME CHEMISTRY"}</small>
+          <h1>{secretMode?<>Your crush.<br/><em>Your secret.</em> Your result.</>:<>Two names.<br/><em>One unexpected</em> connection.</>}</h1>
+          <p>{secretMode?"Enter the name of the person on your mind. Their name stays hidden on the result.":"Bring two names together and let the classic FLAMES game reveal what kind of connection they have."}</p>
+        </div>
+
+        <form className="card" onSubmit={start}>
+          <div className="label">{secretMode?"SECRET CRUSH MATCH":"START A MATCH"}<b>✦</b></div>
+          <div className="fields">
+            <label>Your name<input value={a} onChange={e=>setA(e.target.value)} placeholder="e.g. Alex" maxLength={30} autoComplete="off"/></label>
+            <strong>+</strong>
+            <label>{secretMode?"Your crush's name":"Their name"}<input value={b} onChange={e=>setB(e.target.value)} placeholder={secretMode?"keep it secret 👀":"e.g. Jamie"} maxLength={30} autoComplete="off"/></label>
+          </div>
+          <button className="match" disabled={!a.trim()||!b.trim()}><span>{secretMode?"Reveal secret result":"Discover your match"}</span><b>↗</b></button>
+          <p className="note">{secretMode?"Their name stays on this device and is not saved by FLAMES.":(user?"Your result will be saved to your FLAMES account.":"No account needed. Just play.")}</p>
+        </form>
+
+        <div className="letters">{LETTERS.map((letter,index)=><span style={{animationDelay:index*0.12+"s"}} key={letter}>{letter}</span>)}</div>
+
+        <button type="button" className="invite-home" onClick={inviteFriends}>🔥 Invite friends to play <b>↗</b></button>
+
+        <section className="flames-info-section how-flames">
+          <div className="info-heading"><small>THE CLASSIC GAME</small><h2>How FLAMES works.</h2><p>It is simple on purpose. Put two names in, let the letters do their thing, and see what comes out.</p></div>
+          <div className="how-grid">
+            <div className="how-item"><span>01</span><div><h3>Enter two names</h3><p>Use your name and the person you want to check.</p></div></div>
+            <div className="how-item"><span>02</span><div><h3>FLAMES does the math</h3><p>Matching letters are crossed out and the classic elimination game runs.</p></div></div>
+            <div className="how-item"><span>03</span><div><h3>Reveal the result</h3><p>One of six letters remains: Friends, Lovers, Affection, Marriage, Enemies or Siblings.</p></div></div>
+          </div>
+        </section>
+
+        <section className="flames-info-section meaning-section">
+          <div className="info-heading centered"><small>SIX POSSIBILITIES</small><h2>What will FLAMES say?</h2></div>
+          <div className="meaning-grid">
+            {LETTERS.map(k=><div className="meaning-card" key={k}><b>{k}</b><div><strong>{RESULTS[k].name}</strong><span>{RESULTS[k].name==="Friends"?"Bestie energy 🤝":RESULTS[k].name==="Lovers"?"Romance detected ❤️":RESULTS[k].name==="Affection"?"Something sweet 💫":RESULTS[k].name==="Marriage"?"Skipping straight ahead 💍":RESULTS[k].name==="Enemies"?"Chaos incoming ⚡":"Family vibes 🫶"}</span></div></div>)}
+          </div>
+        </section>
+
+        <section className="flames-info-section final-invite-section">
+          <div className="final-invite-inner">
+            <div className="final-flame"><Flame/></div>
+            <div><small>READY FOR ANOTHER ONE?</small><h2>Send FLAMES to someone.</h2><p>Drop the link in the group chat, challenge a friend, or keep your crush result to yourself. 👀</p></div>
+            <button type="button" onClick={inviteFriends}>Invite someone ↗</button>
+          </div>
+        </section>
+      </>}
+
+      {loading&&<div className="loading">
+        <div className="names"><b>{a.trim()}</b><span><Flame/></span><b>{secretMode?"Secret Crush":b.trim()}</b></div>
+        <div className="ring"><div><Flame/></div></div>
+        <p>{secretMode?"Checking the secret connection":"Calculating your connection"}<span>...</span></p>
+        <div className="bars"><i/><i/><i/><i/><i/></div>
+      </div>}
+
+      {key&&result&&<div className={"result result-"+key.toLowerCase()}>
+        <div className="resulttop"><button onClick={reset}>← Try another person</button><small>{secretMode?"SECRET RESULT":"RESULT REVEALED"}</small></div>
+        <div className="resultcard">
+          <div className="result-logo"><img src="/favicon.svg" alt="" /></div>
+          <div className="result-sparkles"><i/><i/><i/><i/><i/><i/></div>
+          <div className="pair">{displayPair}</div>
+          <div className="emoji">{result.emoji}</div>
+          <small>THE FLAMES SAYS</small>
+          <h2>{result.name}</h2>
+          <div className="result-title">{result.title}</div>
+          <p className="result-quote">“{result.quote}”</p>
+          <p>{result.messages[quipIndex]}</p>
+          <div className="compat"><div><span>PLAYFUL COMPATIBILITY</span><b>{pct}%</b></div><div className="meter"><i style={{width:pct+"%"}}/></div><small>Entertainment only — generated from the names.</small></div>
+          <div className="actions"><button className="share-primary" onClick={()=>{setShareNotice("");setShareOpen(true)}}>Share result ↗</button><button onClick={download}>{downloaded?"Downloaded ✓":"Download card ↓"}</button><button onClick={copy}>{copied?"Copied ✓":"Copy result"}</button></div>
+        </div>
+        <p className="disclaimer">FLAMES is a classic name game, not a real measure of relationship compatibility.</p>
+        {!user&&!nudgeDismissed&&<div className="account-nudge"><div className="nudge-flame"><Flame/></div><div className="nudge-copy"><small>KEEP YOUR FLAMES</small><strong>Create an account today</strong><p>Save your results and keep your FLAMES history connected.</p></div><div className="nudge-actions"><a className="header-link-button header-signup" href="/register">Create account</a><button className="nudge-later" onClick={()=>setNudgeDismissed(true)}>Maybe later</button></div></div>}
+      </div>}
+    </section>
+
+    {shareOpen&&<div className="share-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setShareOpen(false)}}><div className="share-modal" role="dialog" aria-modal="true" aria-labelledby="share-title">
+      <button className="share-close" type="button" aria-label="Close share options" onClick={()=>setShareOpen(false)}>×</button>
+      <div className="share-kicker">YOUR RESULT IS READY</div><h2 id="share-title">Share your FLAMES result</h2><p className="share-sub">Send the card directly, or choose a platform.</p>
+      <button className="share-card-btn" type="button" onClick={shareCard}>↗ <span>Share result card</span><small>Choose an app on your device</small></button>
+      <div className="share-divider"><span>or choose a platform</span></div>
+      <div className="platform-grid">
+        <button type="button" onClick={()=>shareTo("x")}><b>𝕏</b><span>X</span></button>
+        <button type="button" onClick={()=>shareTo("instagram")}><b>◎</b><span>Instagram</span></button>
+        <button type="button" onClick={()=>shareTo("whatsapp")}><b>◔</b><span>WhatsApp</span></button>
+        <button type="button" onClick={()=>shareTo("facebook")}><b>f</b><span>Facebook</span></button>
+        <button type="button" onClick={()=>shareTo("threads")}><b>@</b><span>Threads</span></button>
+        <button type="button" onClick={()=>shareTo("reddit")}><b>●</b><span>Reddit</span></button>
+        <button type="button" onClick={()=>shareTo("discord")}><b>◌</b><span>Discord</span></button>
+      </div>
+      {shareNotice&&<div className="share-notice">{shareNotice}</div>}
+      <button type="button" className="share-copy-link" onClick={copy}>{copied?"Result copied ✓":"Copy result text"}</button>
+      <p className="share-footnote">On phones that support it, “Share result card” opens the system share sheet. On desktop, the platform buttons open their share pages.</p>
+    </div></div>}
+
+    <footer><span>FLAMES</span><span>Classic game · Modern experience</span><button type="button" className="feedback-link" onClick={()=>setFeedbackOpen(true)}>Feedback</button><span>🔥</span></footer>
+
+    {miniPromo&&<aside className="mini-promo"><button className="mini-close" aria-label="Dismiss MINI BOX promotion" onClick={dismissMiniPromo}>×</button><div className="mini-promo-label">ANOTHER LITTLE THING</div><strong>Try MINI BOX</strong><p>Ask questions anonymously and get real human answers.</p><a href="https://minibox-app.vercel.app/" target="_blank" rel="noreferrer">Try MINI BOX ↗</a></aside>}
+
+    {feedbackOpen&&<div className="feedback-backdrop" role="dialog" aria-modal="true" aria-label="FLAMES feedback"><div className="feedback-modal">
+      <button className="feedback-close" onClick={()=>setFeedbackOpen(false)} aria-label="Close feedback">×</button>
+      {feedbackSent?<div className="feedback-success"><div>✓</div><h3>Thanks for the feedback.</h3><p>It helps us improve FLAMES.</p></div>:<>
+        <small>OPTIONAL FEEDBACK</small><h3>How's FLAMES?</h3><p className="feedback-sub">Tell us what you think. You can close this without sending anything.</p>
+        <div className="feedback-ratings">{[["love_it","😍","Love it"],["good","🙂","Good"],["okay","😐","Okay"],["needs_work","😕","Needs work"]].map(([v,e,t])=><button key={v} type="button" className={feedbackRating===v?"selected":""} onClick={()=>setFeedbackRating(v)}><span>{e}</span>{t}</button>)}</div>
+        <div className="feedback-field"><label>Anything we should improve? <em>Optional</em></label><textarea value={feedbackMessage} onChange={e=>setFeedbackMessage(e.target.value)} maxLength={1000} placeholder="Tell us what you think..."/></div>
+        <div className="feedback-field"><label>Category <em>Optional</em></label><div className="feedback-cats">{[["bug","Bug"],["idea","Idea"],["ui","UI"],["game","Game"],["other","Other"]].map(([v,t])=><button key={v} type="button" className={feedbackCategory===v?"selected":""} onClick={()=>setFeedbackCategory(v)}>{t}</button>)}</div></div>
+        <button className="feedback-submit" disabled={feedbackSending||(!feedbackRating&&!feedbackMessage.trim())} onClick={sendFeedback}>{feedbackSending?"Sending…":"Send feedback"}</button>
+      </>}
+    </div></div>}
+  </main>;
+}
