@@ -1,0 +1,213 @@
+import { useEffect, useState } from "react";
+import { supabase } from "./supabase.js";
+import { signIn, signOut, signUp, requestPasswordReset, verifyRecoveryCode, updatePassword } from "./auth.js";
+import { trackEvent } from "./analytics.js";
+import "./SimpleApp.css";
+
+const RESULTS={
+  F:{name:"Friends",emoji:"🤝",messages:["Best-friend energy 😂","No drama. Just good vibes.","This one feels like a meme-sharing friendship."]},
+  L:{name:"Lovers",emoji:"❤️",messages:["Okay… FLAMES sees chemistry 👀","Somebody might want to send that text.","There is definitely a little romance hiding here."]},
+  A:{name:"Affection",emoji:"💫",messages:["Something sweet is going on.","Soft energy detected.","There is a little extra care here."]},
+  M:{name:"Marriage",emoji:"💍",messages:["FLAMES skipped straight to forever 😂","Somebody better start looking at rings.","Apparently this got serious very quickly."]},
+  E:{name:"Enemies",emoji:"⚡",messages:["At least the rivalry will be entertaining.","The names chose chaos 😂","Friendly warning: expect arguments."]},
+  S:{name:"Siblings",emoji:"🫶",messages:["Family energy detected.","Very much sibling chaos.","Please stop fighting over the remote 😂."]}
+};
+const LETTERS=["F","L","A","M","E","S"];
+const QUOTES=["One more match. You know you want to.","Curiosity has entered the chat.","Today feels like a good day to test a name.","No pressure. Just FLAMES.","There is always one more person to test 😂."];
+
+function flames(a,b){
+  let x=a.toLowerCase().replace(/[^a-z]/g,"").split("");
+  let y=b.toLowerCase().replace(/[^a-z]/g,"").split("");
+  if(!x.length||!y.length)return null;
+  for(let i=0;i<x.length;i++){const j=y.indexOf(x[i]);if(j>-1){x[i]="";y[j]="";}}
+  const n=x.filter(Boolean).length+y.filter(Boolean).length;
+  if(!n)return "F";
+  let pool=[...LETTERS],i=0;
+  while(pool.length>1){i=(i+n-1)%pool.length;pool.splice(i,1)}
+  return pool[0];
+}
+function percent(a,b){
+  let h=0;const s=a.trim().toLowerCase()+":"+b.trim().toLowerCase();
+  for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;
+  return 58+(h%40);
+}
+function timeAgo(v){
+  const m=Math.max(0,Math.floor((Date.now()-new Date(v).getTime())/60000));
+  if(m<1)return "just now";if(m<60)return m+"m ago";
+  const h=Math.floor(m/60);if(h<24)return h+"h ago";return Math.floor(h/24)+"d ago";
+}
+function initials(name){return(name||"F").split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join("").toUpperCase()}
+function Avatar({profile,size="md"}){return <div className={"sa-avatar sa-avatar-"+size}><span>{initials(profile?.display_name)}</span><i/></div>}
+function Icon({name,size=18}){
+  const p={width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round"};
+  const x={
+    home:<><path d="m3 10 9-7 9 7"/><path d="M5 9v12h14V9"/><path d="M9 21v-6h6v6"/></>,
+    play:<path d="m8 5 11 7-11 7V5Z"/>,plus:<><path d="M12 5v14"/><path d="M5 12h14"/></>,
+    user:<><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></>,
+    clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+    users:<><circle cx="9" cy="8" r="4"/><path d="M2.5 21a6.5 6.5 0 0 1 13 0"/><path d="M16 4a4 4 0 0 1 0 8"/><path d="M17 15a5.5 5.5 0 0 1 4.5 6"/></>,
+    spark:<><path d="m12 2 1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5L12 2Z"/><path d="m19 16 .5 2L21.5 19l-2 .5L19 21l-.5-1.5-2-.5 2-.5L19 16Z"/></>,
+    arrow:<><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></>,back:<><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></>,
+    settings:<><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/><path d="m4.9 4.9 1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/><circle cx="12" cy="12" r="4"/></>
+  };
+  return <svg {...p}>{x[name]||x.spark}</svg>;
+}
+function go(path){window.history.pushState({}, "", path);window.dispatchEvent(new PopStateEvent("popstate"))}
+
+function Shell({profile,streak,view,children}){
+  return <main className="sa-app">
+    <header className="sa-nav">
+      <button className="sa-brand" onClick={()=>go("/app")}><span className="sa-logo"><span>F</span></span><span>FLAMES</span></button>
+      <nav>
+        <button className={view==="home"?"active":""} onClick={()=>go("/app")}><Icon name="home"/>Home</button>
+        <button className={view==="play"?"active":""} onClick={()=>go("/app/play")}><Icon name="play"/>Play</button>
+        <button className={view==="create"?"active":""} onClick={()=>go("/app/create")}><Icon name="plus"/>Create</button>
+      </nav>
+      <div className="sa-nav-right"><span className="sa-streak">🔥 {streak||0}</span><button className="sa-avatar-button" onClick={()=>go("/app/profile")}><Avatar profile={profile} size="sm"/></button></div>
+    </header>
+    {children}
+  </main>;
+}
+
+async function getAccount(user){
+  if(!user)return {profile:null,matches:[]};
+  let {data:profile}=await supabase.from("flames_profiles").select("*").eq("id",user.id).single();
+  if(!profile){
+    const meta=user.user_metadata||{};
+    const created=await supabase.from("flames_profiles").insert({id:user.id,username:meta.username||null,display_name:meta.display_name||"FLAMES Friend",avatar_id:Number(meta.avatar_id)||1}).select().single();
+    profile=created.data||null;
+  }
+  const {data:matches}=await supabase.from("flames_matches").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(20);
+  if(profile){
+    const today=new Date().toISOString().slice(0,10);
+    if(profile.last_active_date!==today){
+      const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+      const next=profile.last_active_date===yesterday?(profile.streak_count||0)+1:1;
+      const upd=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",user.id).select().single();
+      profile=upd.data||profile;
+    }
+  }
+  return {profile,matches:matches||[]};
+}
+
+function AuthPage({mode}){
+  const login=mode==="login";
+  const [name,setName]=useState(""),[username,setUsername]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[available,setAvailable]=useState(null),[done,setDone]=useState(false);
+  useEffect(()=>{if(login||username.trim().length<3){setAvailable(null);return}let off=false;const t=setTimeout(async()=>{const {data}=await supabase.from("flames_profiles").select("id").eq("username",username.trim().toLowerCase()).limit(1);if(!off)setAvailable(!data?.length)},300);return()=>{off=true;clearTimeout(t)}},[username,login]);
+  const submit=async e=>{
+    e.preventDefault();setError("");
+    if(!login&&(!name.trim()||available!==true)){setError("Choose an available username and enter your name.");return}
+    if(!/^\S+@\S+\.\S+$/.test(email.trim())){setError("Enter a valid email.");return}
+    if(password.length<6){setError("Password must be at least 6 characters.");return}
+    setBusy(true);
+    const r=login?await signIn({email,password}):await signUp({email,password,displayName:name.trim(),username:username.trim().toLowerCase()});
+    setBusy(false);
+    if(r.error){setError(r.error.message||"Something went wrong.");return}
+    if(login){go("/app");return}
+    if(!r.data?.session){setError("Account created, but email confirmation is still enabled.");return}
+    setDone(true);
+  };
+  return <main className="sa-auth"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-auth-card"><div className="sa-fire">🔥</div><span className="sa-kicker">{login?"WELCOME BACK":"JOIN FLAMES"}</span>{done?<><h1>You're in.</h1><p>Your FLAMES account is ready.</p><button className="sa-primary" onClick={()=>go("/app/play")}>Play FLAMES <Icon name="arrow"/></button></>:<><h1>{login?"Come back and play.":"Make FLAMES yours."}</h1><p>{login?"Your games, your streak, your little FLAMES history.":"A small account keeps your results and gives you your own FLAMES name."}</p>{!login&&<><label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Alex Johnson"/></label><label>FLAMES username<div className="sa-user-input"><b>@</b><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="alexjohnson"/></div>{available===true&&<small className="sa-good">Name is available.</small>}{available===false&&<small className="sa-bad">That name is taken.</small>}</label></>}<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label><label><div className="sa-password-line"><span>Password</span>{login&&<a href="/forgot-password">Forgot?</a>}</div><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label>{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={busy}>{busy?"One moment…":login?"Log in":"Create account"} <Icon name="arrow"/></button><a className="sa-switch" href={login?"/register":"/login"}>{login?"New here? Create an account":"Already have an account? Log in"}</a></>}</section></main>;
+}
+
+function ResetPage(){
+  const [step,setStep]=useState("email"),[email,setEmail]=useState(""),[code,setCode]=useState(""),[password,setPassword]=useState(""),[confirm,setConfirm]=useState(""),[token,setToken]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false),[done,setDone]=useState(false);
+  const run=async e=>{
+    e.preventDefault();setError("");
+    if(step==="email"){setBusy(true);const r=await requestPasswordReset({email:email.trim().toLowerCase()});setBusy(false);if(r.error)setError(r.error.message);else setStep("code");return}
+    if(step==="code"){setBusy(true);const r=await verifyRecoveryCode({email:email.trim().toLowerCase(),token:code});setBusy(false);if(r.error)setError(r.error.message);else{setToken(r.data?.resetToken||"");setStep("password")}return}
+    if(password.length<6||password!==confirm){setError("Make sure both passwords match and are at least 6 characters.");return}
+    setBusy(true);const r=await updatePassword({email:email.trim().toLowerCase(),resetToken:token,password});setBusy(false);if(r.error)setError(r.error.message);else{await signOut();setDone(true)}
+  };
+  return <main className="sa-auth"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-auth-card"><div className="sa-fire">🔥</div>{done?<><span className="sa-kicker">PASSWORD UPDATED</span><h1>You're back.</h1><p>Log in with your new password.</p><a className="sa-primary sa-button-link" href="/login">Log in <Icon name="arrow"/></a></>:<><span className="sa-kicker">PASSWORD RESET</span><h1>{step==="email"?"Forgot your password?":step==="code"?"Check your email.":"Choose a new password."}</h1><p>{step==="email"?"We'll send a 6-digit code.":step==="code"?"Enter the code we sent you.":"Set a new password for FLAMES."}</p><form onSubmit={run}>{step==="email"&&<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label>}{step==="code"&&<label>6-digit code<input inputMode="numeric" maxLength={6} value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))}/></label>}{step==="password"&&<><label>New password<input type="password" value={password} onChange={e=>setPassword(e.target.value)}/></label><label>Confirm password<input type="password" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label></>}{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={busy}>{busy?"Working…":step==="email"?"Send code":step==="code"?"Verify code":"Update password"} <Icon name="arrow"/></button></form><a className="sa-switch" href="/login">Back to log in</a></>}</section></main>;
+}
+
+function GamePage({profile,streak,user}){
+  const [a,setA]=useState(""),[b,setB]=useState(""),[secret,setSecret]=useState(false),[busy,setBusy]=useState(false),[result,setResult]=useState(null),[saved,setSaved]=useState(false);
+  const run=async e=>{
+    e.preventDefault();if(!a.trim()||!b.trim()||busy)return;
+    setBusy(true);setSaved(false);setResult(null);trackEvent("match_started",{mode:secret?"secret_crush":"classic"});
+    await new Promise(r=>setTimeout(r,650));const key=flames(a,b),pct=percent(a,b),message=RESULTS[key].messages[Math.floor(Math.random()*RESULTS[key].messages.length)];
+    if(user){const r=await supabase.from("flames_matches").insert({user_id:user.id,name_a:a.trim(),name_b:b.trim(),result_key:key,percent:pct,message,secret_mode:secret}).select().single();setSaved(!r.error)}
+    setResult({key,pct,message});setBusy(false);trackEvent("match_completed",{mode:secret?"secret_crush":"classic",result:key});
+  };
+  return <Shell profile={profile} streak={streak} view="play"><div className="sa-game"><button className="sa-back" onClick={()=>go("/app")}><Icon name="back" size={16}/> Home</button><div className="sa-game-heading"><span className="sa-kicker">JUST FOR FUN</span><h1>Who are we testing?</h1><p>Two names. One ridiculous answer.</p></div><div className="sa-mode"><button className={!secret?"active":""} onClick={()=>setSecret(false)}>Classic</button><button className={secret?"active":""} onClick={()=>setSecret(true)}>💘 Secret Crush</button></div>{!result?<form className="sa-game-card" onSubmit={run}><div className="sa-name-row"><label>Your name<input value={a} onChange={e=>setA(e.target.value)} placeholder="Alex"/></label><span>+</span><label>Their name<input value={b} onChange={e=>setB(e.target.value)} placeholder="Jamie"/></label></div><button className="sa-primary sa-game-submit" disabled={busy||!a.trim()||!b.trim()}>{busy?"FLAMES is thinking…":"Reveal my FLAMES"} <Icon name="arrow"/></button><div className="sa-letter-dots">{LETTERS.map((l,i)=><span key={l} style={{animationDelay:i*0.1+"s"}}>{l}</span>)}</div></form>:<section className="sa-result"><div className="sa-result-top"><span>{secret?"SECRET CRUSH":"FLAMES RESULT"}</span><b>{result.pct}%</b></div><div className="sa-result-emoji">{RESULTS[result.key].emoji}</div><h2>{RESULTS[result.key].name}</h2><p>{result.message}</p><div className="sa-result-bar"><i style={{width:result.pct+"%"}}/></div><small>{saved?"Saved to your FLAMES.":"Your result is ready."}</small><div className="sa-result-actions"><button className="sa-primary" onClick={()=>{setResult(null);setA("");setB("")}}>Try another</button><button onClick={()=>navigator.clipboard?.writeText("FLAMES says "+RESULTS[result.key].name+" 🔥")}>Copy</button></div></section>}</div></Shell>;
+}
+
+function Home({profile,streak,matches}){
+  const first=(profile?.display_name||"Friend").split(" ")[0],latest=matches[0],quote=QUOTES[(new Date().getDate()+matches.length)%QUOTES.length];
+  return <Shell profile={profile} streak={streak} view="home"><div className="sa-home"><section className="sa-welcome"><div><span className="sa-kicker">WELCOME BACK</span><h1>Hey {first}.</h1><p>{quote}</p></div><span className="sa-fire-mini">🔥 {streak||0}</span></section><section className="sa-hero-card"><div className="sa-hero-flame">🔥</div><span className="sa-kicker">READY?</span><h2>Let's see what FLAMES says.</h2><p>No overthinking. Just put in two names.</p><button className="sa-primary sa-hero-button" onClick={()=>go("/app/play")}><Icon name="play"/> Play FLAMES</button></section><div className="sa-two-actions"><button onClick={()=>go("/app/create")}><span className="sa-action-icon"><Icon name="plus"/></span><div><strong>Ask a question</strong><small>Make a tiny game for friends.</small></div><Icon name="arrow"/></button><button onClick={()=>go("/app/profile")}><Avatar profile={profile} size="sm"/><div><strong>Your profile</strong><small>@{profile?.username||"flames"}</small></div><Icon name="arrow"/></button></div><section className="sa-recent"><div className="sa-section-title"><span className="sa-kicker">RECENT</span><h3>Latest FLAMES</h3></div>{latest?<div className="sa-latest"><div className={"sa-letter-result result-"+String(latest.result_key).toLowerCase()}>{latest.result_key}</div><div><strong>{latest.name_a} × {latest.name_b}</strong><span>{RESULTS[latest.result_key]?.name} · {latest.percent}%</span><small>{timeAgo(latest.created_at)}</small></div></div>:<div className="sa-empty"><span>✦</span><p>Your first result will live here.</p><button onClick={()=>go("/app/play")}>Play now <Icon name="arrow" size={14}/></button></div>}</section></div></Shell>;
+}
+
+function CreatePage({profile,streak,user}){
+  const [question,setQuestion]=useState(""),[options,setOptions]=useState(["",""]),[busy,setBusy]=useState(false),[error,setError]=useState(""),[link,setLink]=useState("");
+  const create=async e=>{
+    e.preventDefault();setError("");const q=question.trim(),opts=options.map(x=>x.trim()).filter(Boolean);
+    if(q.length<3||opts.length<2){setError("Write a question and at least two choices.");return}
+    setBusy(true);const title=q.length>45?q.slice(0,45).trim()+"…":q;
+    const r=await supabase.from("flames_games").insert({creator_id:user.id,kind:"poll",title,prompt:q,options:opts,answer_value:null}).select().single();
+    setBusy(false);if(r.error){setError("Could not create the question.");return}setLink(location.origin+"/game/"+r.data.id);
+  };
+  if(link)return <Shell profile={profile} streak={streak} view="create"><div className="sa-create"><section className="sa-create-card sa-success"><div className="sa-success-check">✓</div><span className="sa-kicker">LIVE</span><h1>Your question is ready.</h1><p>Send the link. That's it.</p><div className="sa-link">{link}</div><button className="sa-primary" onClick={()=>navigator.clipboard?.writeText(link)}>Copy link</button><button className="sa-plain" onClick={()=>setLink("")}>Ask another</button></section></div></Shell>;
+  return <Shell profile={profile} streak={streak} view="create"><div className="sa-create"><section className="sa-create-card"><span className="sa-kicker">CREATE</span><h1>Ask one fun question.</h1><p>Keep it quick. Give people a few choices.</p><form onSubmit={create}><label>Question<textarea rows={4} maxLength={500} value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Who should choose the movie?"/></label><div className="sa-choice-label"><span>Choices</span><small>2–4</small></div>{options.map((x,i)=><div className="sa-choice" key={i}><input value={x} onChange={e=>setOptions(xs=>xs.map((v,n)=>n===i?e.target.value:v))} placeholder={"Choice "+(i+1)}/>{options.length>2&&<button type="button" onClick={()=>setOptions(xs=>xs.filter((_,n)=>n!==i))}>×</button>}</div>)}{options.length<4&&<button type="button" className="sa-add" onClick={()=>setOptions(xs=>[...xs,""])}><Icon name="plus" size={14}/> Add choice</button>}{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={busy}>{busy?"Creating…":"Create question"} <Icon name="arrow"/></button></form></section></div></Shell>;
+}
+
+function ProfilePage({profile,streak,matches}){
+  const logout=async()=>{await signOut();window.location.replace("/")};
+  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-profile"><section className="sa-profile-card"><Avatar profile={profile} size="xl"/><span className="sa-kicker">YOUR FLAMES</span><h1>{profile?.display_name||"FLAMES Friend"}</h1><p>@{profile?.username||"flames"}</p><div className="sa-profile-stats"><div><strong>{matches.length}</strong><span>matches</span></div><div><strong>{streak||0}</strong><span>day streak</span></div></div></section><section className="sa-profile-list"><button onClick={()=>go("/app/history")}><Icon name="clock"/><span>Recent matches</span><Icon name="arrow"/></button><button onClick={()=>go("/app/circle")}><Icon name="users"/><span>Private Circle</span><Icon name="arrow"/></button><button onClick={()=>go("/app/achievements")}><Icon name="spark"/><span>Achievements</span><Icon name="arrow"/></button><button onClick={()=>go("/app/settings")}><Icon name="settings"/><span>Settings</span><Icon name="arrow"/></button><button className="danger" onClick={logout}><Icon name="back"/><span>Log out</span></button></section></div></Shell>;
+}
+
+function HistoryPage({profile,streak,matches}){
+  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">RECENT MATCHES</span><h1>Your latest plays.</h1><div className="sa-list">{matches.length?matches.map(m=><div className="sa-list-item" key={m.id}><div className={"sa-letter-result result-"+String(m.result_key).toLowerCase()}>{m.result_key}</div><div><strong>{m.name_a} × {m.name_b}</strong><span>{RESULTS[m.result_key]?.name} · {m.percent}%</span><small>{timeAgo(m.created_at)}</small></div></div>):<div className="sa-empty">Nothing here yet.</div>}</div></div></Shell>;
+}
+function AchievementsPage({profile,streak,matches}){
+  const goals=[["First Flame",1,matches.length],["Three day streak",3,streak||0],["Five matches",5,matches.length]];
+  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">ACHIEVEMENTS</span><h1>Small wins.</h1><p className="sa-secondary-sub">A little progress makes the game more fun.</p><div className="sa-achievements">{goals.map(([t,g,p])=><div className="sa-achievement" key={t}><span>✦</span><div><strong>{t}</strong><small>{Math.min(p,g)}/{g}{p>=g?" · Unlocked":""}</small></div><i style={{width:Math.min((p/g)*100,100)+"%"}}/></div>)}</div></div></Shell>;
+}
+function SettingsPage({profile,streak}){return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">SETTINGS</span><h1>Keep it simple.</h1><p className="sa-secondary-sub">Your account is ready to play.</p><div className="sa-settings-card"><Avatar profile={profile} size="lg"/><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div></div></div></Shell>}
+
+function CirclePage({profile,streak,user}){
+  const [query,setQuery]=useState(""),[results,setResults]=useState([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
+  const search=async e=>{e.preventDefault();const q=query.trim().toLowerCase();if(q.length<2){setResults([]);return}setBusy(true);const r=await supabase.from("flames_profiles").select("*").ilike("username",q+"%").limit(6);setBusy(false);setResults((r.data||[]).filter(x=>x.id!==user.id))};
+  const add=async p=>{setNotice("");const r=await supabase.from("flames_connections").insert({requester_id:user.id,addressee_id:p.id,status:"pending"}).select().single();setNotice(r.error?"Request could not be sent.":"Request sent.")};
+  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">PRIVATE CIRCLE</span><h1>Keep your people close.</h1><p className="sa-secondary-sub">Find someone by FLAMES username.</p><form className="sa-search" onSubmit={search}><input value={query} onChange={e=>setQuery(e.target.value.replace(/[^a-z0-9_]/gi,"").slice(0,20))} placeholder="@username"/><button className="sa-primary">{busy?"…":"Find"}</button></form>{notice&&<div className="sa-good">{notice}</div>}<div className="sa-list">{results.map(p=><div className="sa-person" key={p.id}><Avatar profile={p}/><div><strong>{p.display_name}</strong><span>@{p.username}</span></div><button onClick={()=>add(p)}>Add</button></div>)}</div></div></Shell>;
+}
+
+function PublicQuestion({id}){
+  const [game,setGame]=useState(null),[answer,setAnswer]=useState(""),[done,setDone]=useState(false),[error,setError]=useState("");
+  useEffect(()=>{(async()=>{const r=await supabase.from("flames_games").select("*").eq("id",id).single();if(r.error)setError("This question is no longer available.");else setGame(r.data)})()},[id]);
+  const submit=async()=>{if(!answer.trim())return;const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim()});if(r.error)setError("Could not send your answer.");else setDone(true)};
+  if(error)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><h1>Oops.</h1><p>{error}</p><a className="sa-primary sa-button-link" href="/">Play FLAMES</a></section></main>;
+  if(!game)return <main className="sa-public-question"><section className="sa-question-card"><div className="sa-loading-flame">🔥</div><p>Opening…</p></section></main>;
+  if(done)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><div className="sa-success-check">✓</div><span className="sa-kicker">SENT</span><h1>Nice.</h1><p>Your answer is in.</p><a className="sa-primary sa-button-link" href="/">Play FLAMES <Icon name="arrow"/></a></section></main>;
+  return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><span className="sa-kicker">{String(game.kind||"poll").toUpperCase()}</span><h1>{game.title}</h1><p className="sa-question-text">{game.prompt}</p><div className="sa-public-options">{(game.options||[]).map(o=><button className={answer===o?"selected":""} key={o} onClick={()=>setAnswer(o)}>{o}</button>)}</div>{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={!answer.trim()} onClick={submit}>Send answer <Icon name="arrow"/></button></section></main>;
+}
+
+export default function SimpleApp(){
+  const [path,setPath]=useState(()=>location.pathname.replace(/\/$/,"")||"/");
+  const [authReady,setAuthReady]=useState(false),[user,setUser]=useState(null),[profile,setProfile]=useState(null),[matches,setMatches]=useState([]),[streak,setStreak]=useState(0);
+  useEffect(()=>{
+    const onPop=()=>setPath(location.pathname.replace(/\/$/,"")||"/");
+    window.addEventListener("popstate",onPop);
+    (async()=>{const r=await supabase.auth.getUser();const u=r.data?.user||null;setUser(u);if(u){const a=await getAccount(u);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}setAuthReady(true)})();
+    const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{const u=session?.user||null;setUser(u);if(u){const a=await getAccount(u);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}else{setProfile(null);setMatches([]);setStreak(0)}});
+    return()=>{window.removeEventListener("popstate",onPop);sub.subscription.unsubscribe()};
+  },[]);
+  useEffect(()=>{if(!authReady)return;const authPages=["/login","/register","/forgot-password","/reset-password"];if(user&&path==="/"){history.replaceState({}, "", "/app");setPath("/app")}else if(!user&&path.startsWith("/app")){history.replaceState({}, "", "/login");setPath("/login")}else if(user&&authPages.includes(path)){history.replaceState({}, "", "/app");setPath("/app")}},[authReady,user,path]);
+  if(path==="/login")return <AuthPage mode="login"/>;
+  if(path==="/register")return <AuthPage mode="register"/>;
+  if(path==="/forgot-password"||path==="/reset-password")return <ResetPage/>;
+  if(path.match(/^\/game\/[0-9a-f-]+$/i))return <PublicQuestion id={path.split("/")[2]}/>;
+  if(!authReady)return <main className="sa-loading-screen"><div>🔥</div><span>Opening FLAMES…</span></main>;
+  if(path.startsWith("/app")){
+    if(path==="/app/play")return <GamePage profile={profile} streak={streak} user={user}/>;
+    if(path==="/app/create")return <CreatePage profile={profile} streak={streak} user={user}/>;
+    if(path==="/app/profile")return <ProfilePage profile={profile} streak={streak} matches={matches} user={user}/>;
+    if(path==="/app/history")return <HistoryPage profile={profile} streak={streak} matches={matches}/>;
+    if(path==="/app/achievements")return <AchievementsPage profile={profile} streak={streak} matches={matches}/>;
+    if(path==="/app/settings")return <SettingsPage profile={profile} streak={streak}/>;
+    if(path==="/app/circle")return <CirclePage profile={profile} streak={streak} user={user}/>;
+    return <Home profile={profile} streak={streak} matches={matches}/>;
+  }
+  return <main className="sa-public"><header className="sa-public-nav"><a className="sa-brand" href="/"><span className="sa-logo"><span>F</span></span><span>FLAMES</span></a><div><a href="/login">Log in</a><a className="sa-nav-cta" href="/register">Create account</a></div></header><section className="sa-public-hero"><span className="sa-kicker">JUST FOR FUN</span><h1>Two names.<br/><em>One FLAMES result.</em></h1><p>Put two names in. See what happens.</p><a className="sa-primary sa-hero-button" href="/login">Play FLAMES <Icon name="play"/></a><div className="sa-public-letters">{LETTERS.map(l=><span key={l}>{l}</span>)}</div></section><section className="sa-public-simple"><div><span className="sa-kicker">HOW IT WORKS</span><h2>Names in. Result out.</h2><p>Enter two names and let the classic elimination game do the rest.</p></div><div className="sa-public-results">{LETTERS.map(l=><div key={l}><b>{l}</b><strong>{RESULTS[l].name}</strong></div>)}</div></section><footer className="sa-public-footer">FLAMES · Just for fun.</footer></main>;
+}
