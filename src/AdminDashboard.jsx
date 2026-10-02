@@ -9,7 +9,8 @@ const nav = [
   ["visitors", "Web Visitors"],
   ["games", "FLAMES Games"],
   ["questions", "Questions"],
-  ["feedback", "Feedback"]
+  ["feedback", "Feedback"],
+  ["analytics", "Analytics"]
 ];
 
 function formatNumber(value) {
