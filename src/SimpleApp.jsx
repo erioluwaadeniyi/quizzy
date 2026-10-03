@@ -84,6 +84,19 @@ function Icon({name,size=18}){
   return <svg {...p}>{x[name]||x.spark}</svg>;
 }
 function go(path){window.history.pushState({}, "", path);window.dispatchEvent(new PopStateEvent("popstate"))}
+function useLiveRefresh(interval=5000){
+  const [,setTick]=useState(0);
+  useEffect(()=>{
+    let timer;
+    const ping=()=>setTick(v=>v+1);
+    const schedule=()=>{clearInterval(timer);timer=setInterval(ping,interval)};
+    schedule();
+    const onVisible=()=>{if(document.visibilityState==="visible"){ping();schedule()}else clearInterval(timer)};
+    document.addEventListener("visibilitychange",onVisible);
+    window.addEventListener("flames:data-change",ping);
+    return()=>{clearInterval(timer);document.removeEventListener("visibilitychange",onVisible);window.removeEventListener("flames:data-change",ping)};
+  },[interval]);
+}
 
 function Shell({profile,streak,view,children}){
   return <main className="sa-app">
@@ -223,7 +236,7 @@ function CreatePage({profile,streak,user}){
         setError(r.error.message||"Could not create the question.");
         return;
       }
-      setLink(location.origin+"/game/"+id); await recordMeaningfulActivity();
+      setLink(location.origin+"/game/"+id); await recordMeaningfulActivity(); window.dispatchEvent(new Event("flames:data-change"));
     }catch(err){
       setError(err?.message||"We couldn't create the question. Check your connection and try again.");
     }finally{setBusy(false)}
@@ -267,7 +280,8 @@ function MyResultsPage({profile,streak,matches}){return <Shell profile={profile}
 
 function MyQuestionsPage({profile,streak,user}){const [games,setGames]=useState([]),[busy,setBusy]=useState(true);useEffect(()=>{(async()=>{const r=await supabase.from("flames_games").select("id,title,prompt,created_at").eq("creator_id",user.id).order("created_at",{ascending:false});setGames(r.data||[]);setBusy(false)})()},[user.id]);return <Shell profile={profile} streak={streak} view="results"><div className="sa-secondary"><button className="results-back" onClick={()=>go("/app/results")}><Icon name="back"/> Results</button><span className="sa-kicker">MY QUESTIONS</span><h1>Questions you asked.</h1><p className="sa-secondary-sub">Open one to see every answer and who gave it.</p><div className="question-results-list">{busy?<div className="sa-empty">Loading questions…</div>:games.length?games.map(g=><button className="question-result-card" key={g.id} onClick={()=>go("/app/results/question/"+g.id)}><span className="question-result-icon"><Icon name="users"/></span><span><strong>{g.title}</strong><small>{g.prompt}</small></span><Icon name="arrow"/></button>):<div className="sa-empty">You have not created a question yet.</div>}</div></div></Shell>}
 
-function QuestionResultsPage({profile,streak,user,id}){const [game,setGame]=useState(null),[responses,setResponses]=useState([]),[busy,setBusy]=useState(true);useEffect(()=>{(async()=>{const g=await supabase.from("flames_games").select("id,title,prompt,options,created_at").eq("id",id).eq("creator_id",user.id).single();const r=await supabase.from("flames_game_responses").select("id,answer,created_at,respondent_id").eq("game_id",id).order("created_at",{ascending:false});setGame(g.data||null);const rows=r.data||[];const ids=[...new Set(rows.map(x=>x.respondent_id).filter(Boolean))];let profiles=[];if(ids.length){const p=await supabase.from("flames_profiles").select("id,username,display_name,avatar_id").in("id",ids);profiles=p.data||[]}const by=new Map(profiles.map(p=>[p.id,p]));setResponses(rows.map(x=>({...x,profile:by.get(x.respondent_id)||null})));setBusy(false)})()},[id,user.id]);const total=responses.length;return <Shell profile={profile} streak={streak} view="results"><div className="sa-secondary"><button className="results-back" onClick={()=>go("/app/results/my-questions")}><Icon name="back"/> My Questions</button>{busy?<div className="sa-empty">Loading results…</div>:!game?<div className="sa-empty">Question not found.</div>:<><span className="sa-kicker">QUESTION RESULTS</span><h1>{game.title}</h1><p className="sa-secondary-sub">{total} {total===1?"person":"people"} answered.</p><div className="answer-breakdown">{(game.options||[]).map(o=>{const count=responses.filter(r=>r.answer===o).length;const pct=total?Math.round(count/total*100):0;return <div className="answer-breakdown-row" key={o}><div><strong>{o}</strong><span>{pct}%</span></div><i><b style={{width:pct+"%"}}/></i></div>})}</div><h2 className="responders-title">People who answered</h2><div className="responders-list">{responses.length?responses.map(r=><button key={r.id} className="responder-card" onClick={()=>r.respondent_id&&go("/app/results/responder/"+r.respondent_id+"/"+id)}><Avatar profile={r.profile||{display_name:"FLAMES Friend"}} size="sm"/><span><strong>{r.profile?("@"+(r.profile.username||"flames")):"Anonymous"}</strong><small>{r.answer} · {timeAgo(r.created_at)}</small></span><Icon name="arrow"/></button>):<div className="sa-empty">No answers yet.</div>}</div></>}</div></Shell>}
+function QuestionResultsPage({profile,streak,user,id}){const [game,setGame]=useState(null),[responses,setResponses]=useState([]),[busy,setBusy]=useState(true);useLiveRefresh(4000);
+  useEffect(()=>{(async()=>{const g=await supabase.from("flames_games").select("id,title,prompt,options,created_at").eq("id",id).eq("creator_id",user.id).single();const r=await supabase.from("flames_game_responses").select("id,answer,created_at,respondent_id").eq("game_id",id).order("created_at",{ascending:false});setGame(g.data||null);const rows=r.data||[];const ids=[...new Set(rows.map(x=>x.respondent_id).filter(Boolean))];let profiles=[];if(ids.length){const p=await supabase.from("flames_profiles").select("id,username,display_name,avatar_id").in("id",ids);profiles=p.data||[]}const by=new Map(profiles.map(p=>[p.id,p]));setResponses(rows.map(x=>({...x,profile:by.get(x.respondent_id)||null})));setBusy(false)})()},[id,user.id]);useEffect(()=>{if(!game)return;const run=async()=>{const r=await supabase.from("flames_game_responses").select("id,answer,created_at,respondent_id").eq("game_id",id).order("created_at",{ascending:false});const rows=r.data||[];const ids=[...new Set(rows.map(x=>x.respondent_id).filter(Boolean))];let profiles=[];if(ids.length){const p=await supabase.from("flames_profiles").select("id,username,display_name,avatar_id").in("id",ids);profiles=p.data||[]}const by=new Map(profiles.map(p=>[p.id,p]));setResponses(rows.map(x=>({...x,profile:by.get(x.respondent_id)||null}))) };run()},[id]);const total=responses.length;return <Shell profile={profile} streak={streak} view="results"><div className="sa-secondary"><button className="results-back" onClick={()=>go("/app/results/my-questions")}><Icon name="back"/> My Questions</button>{busy?<div className="sa-empty">Loading results…</div>:!game?<div className="sa-empty">Question not found.</div>:<><span className="sa-kicker">QUESTION RESULTS</span><h1>{game.title}</h1><p className="sa-secondary-sub">{total} {total===1?"person":"people"} answered.</p><div className="answer-breakdown">{(game.options||[]).map(o=>{const count=responses.filter(r=>r.answer===o).length;const pct=total?Math.round(count/total*100):0;return <div className="answer-breakdown-row" key={o}><div><strong>{o}</strong><span>{pct}%</span></div><i><b style={{width:pct+"%"}}/></i></div>})}</div><h2 className="responders-title">People who answered</h2><div className="responders-list">{responses.length?responses.map(r=><button key={r.id} className="responder-card" onClick={()=>r.respondent_id&&go("/app/results/responder/"+r.respondent_id+"/"+id)}><Avatar profile={r.profile||{display_name:"FLAMES Friend"}} size="sm"/><span><strong>{r.profile?("@"+(r.profile.username||"flames")):"Anonymous"}</strong><small>{r.answer} · {timeAgo(r.created_at)}</small></span><Icon name="arrow"/></button>):<div className="sa-empty">No answers yet.</div>}</div></>}</div></Shell>}
 
 function ResponderPage({profile,streak,respondentId,gameId}){const [p,setP]=useState(null),[answer,setAnswer]=useState(null);useEffect(()=>{(async()=>{const [pr,rr]=await Promise.all([supabase.from("flames_profiles").select("id,username,display_name,avatar_id,streak_count").eq("id",respondentId).single(),supabase.from("flames_game_responses").select("answer,created_at").eq("game_id",gameId).eq("respondent_id",respondentId).order("created_at",{ascending:false}).limit(1).single()]);setP(pr.data||null);setAnswer(rr.data||null)})()},[respondentId,gameId]);return <Shell profile={profile} streak={streak} view="results"><div className="sa-secondary responder-page"><button className="results-back" onClick={()=>go("/app/results/question/"+gameId)}><Icon name="back"/> Question results</button>{p?<section className="responder-profile-card"><Avatar profile={p} size="xl"/><span className="sa-kicker">FLAMES PROFILE</span><h1>{p.display_name}</h1><p>@{p.username||"flames"}</p><div className="responder-answer"><span>ANSWERED</span><strong>{answer?.answer||"—"}</strong><small>{answer?.created_at?timeAgo(answer.created_at):""}</small></div></section>:<div className="sa-empty">Profile not found.</div>}</div></Shell>}
 
@@ -275,7 +289,10 @@ function ResponderPage({profile,streak,respondentId,gameId}){const [p,setP]=useS
 async function recordMeaningfulActivity(){
   try{
     const r=await supabase.rpc("flames_record_activity",{});
-    if(r?.data?.[0])window.dispatchEvent(new CustomEvent("flames:activity",{detail:r.data[0]}));
+    if(r?.data?.[0]){
+      window.dispatchEvent(new CustomEvent("flames:activity",{detail:r.data[0]}));
+      window.dispatchEvent(new Event("flames:data-change"));
+    }
     return r;
   }catch{return {error:{message:"activity failed"}}}
 }
@@ -310,8 +327,9 @@ const AWARDS={
 function NotificationsBell({user}){
  const [items,setItems]=useState([]),[open,setOpen]=useState(false);
  if(!user)return null;
+ useLiveRefresh(4000);
  const load=async()=>{const r=await supabase.from("flames_notifications").select("*").eq("recipient_id",user.id).order("created_at",{ascending:false}).limit(20);setItems(r.data||[])};
- useEffect(()=>{load();const t=setInterval(load,30000);return()=>clearInterval(t)},[user.id]);
+ useEffect(()=>{load()},[user.id]);
  const unread=items.filter(x=>!x.read_at).length;
  const view=async n=>{await supabase.from("flames_notifications").update({read_at:new Date().toISOString()}).eq("id",n.id);go(n.link_path);setOpen(false);setItems(items.map(x=>x.id===n.id?{...x,read_at:new Date().toISOString()}:x))};
  return <div className="sa-notification-wrap"><button className="sa-notification-button" aria-label="Notifications" onClick={()=>setOpen(v=>!v)}><Icon name="bell" size={18}/>{unread>0&&<b>{unread>9?"9+":unread}</b>}</button>{open&&<div className="sa-notification-panel"><div className="sa-notification-head"><strong>Notifications</strong><small>{unread?unread+" new":"You're all caught up"}</small></div>{items.length?items.slice(0,8).map(n=><div className={"sa-notification "+(!n.read_at?"unread":"")} key={n.id}><div><strong>{n.title}</strong><p>{n.body}</p><small>{timeAgo(n.created_at)}</small></div><button onClick={()=>view(n)}>View <Icon name="arrow" size={13}/></button></div>):<div className="sa-notification-empty"><Icon name="spark"/><span>No important updates yet.</span></div>}</div>}</div>;
@@ -339,6 +357,7 @@ function AchievementsPage({profile,streak,matches,user}){return <Shell profile={
 function SettingsPage({profile,streak}){return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">SETTINGS</span><h1>Keep it simple.</h1><p className="sa-secondary-sub">Your account is ready to play.</p><div className="sa-settings-card"><Avatar profile={profile} size="lg"/><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div></div></div></Shell>}
 
 function CirclePage({profile,streak,user}){
+  useLiveRefresh(5000);
   const [query,setQuery]=useState(""),[results,setResults]=useState([]),[people,setPeople]=useState([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
   const loadCircle=async()=>{
     const r=await supabase.from("flames_connections").select("requester_id,addressee_id,status").or("requester_id.eq."+user.id+",addressee_id.eq."+user.id).eq("status","accepted");
@@ -347,7 +366,7 @@ function CirclePage({profile,streak,user}){
   };
   useEffect(()=>{loadCircle()},[user.id]);
   const search=async e=>{e.preventDefault();const q=query.trim().toLowerCase();if(q.length<2){setResults([]);return}setBusy(true);const r=await supabase.from("flames_profiles").select("id,username,display_name,avatar_id,streak_count").ilike("username",q+"%").limit(6);setBusy(false);setResults((r.data||[]).filter(x=>x.id!==user.id))};
-  const add=async p=>{setNotice("");const r=await supabase.from("flames_connections").insert({requester_id:user.id,addressee_id:p.id,status:"pending"});setNotice(r.error?(r.error.message||"Request could not be sent."):"Request sent.");if(!r.error)setResults([])};
+  const add=async p=>{setNotice("");const r=await supabase.from("flames_connections").insert({requester_id:user.id,addressee_id:p.id,status:"pending"});setNotice(r.error?(r.error.message||"Request could not be sent."):"Request sent.");if(!r.error){setResults([]);window.dispatchEvent(new Event("flames:data-change"))}};
   return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary circle-page"><span className="sa-kicker">Pfunction PublicQuestion({id}){
   const [game,setGame]=useState(null),[creator,setCreator]=useState(null),[answer,setAnswer]=useState(""),[done,setDone]=useState(false),[error,setError]=useState(""),[authChecked,setAuthChecked]=useState(false),[user,setUser]=useState(null);
   useEffect(()=>{(async()=>{const r=await supabase.auth.getUser();setUser(r.data?.user||null);setAuthChecked(true)})()},[]);
@@ -408,7 +427,64 @@ export default function SimpleApp(){
     const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{const u=session?.user||null;setUser(u);if(u){const a=await getAccount(u);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}else{setProfile(null);setMatches([]);setStreak(0)}});
     return()=>{window.removeEventListener("popstate",onPop);window.removeEventListener("flames:activity",onActivity);sub.subscription.unsubscribe()};
   },[]);
-  useEffect(()=>{if(!authReady)return;const authPages=["/login","/register","/forgot-password","/reset-password"];if(user&&path==="/"){history.replaceState({}, "", "/app");setPath("/app")}else if(!user&&path.startsWith("/app")){history.replaceState({}, "", "/login");setPath("/login")}else if(user&&authPages.includes(path)){history.replaceState({}, "", "/app");setPath("/app")}},[authReady,user,path]);
+  useEffect(()=>{if(!authReady)return;const authPages=["/login","/register","/forgot-password","/reset-password"];const returnTo=new URLSearchParams(location.search).get("returnTo");if(user&&path==="/"){history.replaceState({}, "", "/app");setPath("/app")}else if(!user&&path.startsWith("/app")){history.replaceState({}, "", "/login");setPath("/login")}else if(user&&authPages.includes(path)){const target=returnTo&&returnTo.startsWith("/")?returnTo:"/app";history.replaceState({}, "", target);setPath(target)}},[authReady,user,path]);
+  if(path==="/login")return <AuthPage mode="login"/>;
+  if(path==="/register")return <AuthPage mode="register"/>;
+  if(path==="/forgot-password"||path==="/reset-password")return <ResetPage/>;
+  if(path.match(/^\/game\/[0-9a-f-]+$/i))return <PublicQuestion id={path.split("/")[2]}/>;
+  if(!authReady)return <main className="sa-loading-screen"><div>🔥</div><span>Opening FLAMES…</span></main>;
+  if(path.startsWith("/app")){
+    if(path==="/app/play")return <GamePage profile={profile} streak={streak} user={user}/>;
+    if(path==="/app/create")return <CreatePage profile={profile} streak={streak} user={user}/>;
+    if(path==="/app/results")return <ResultsHub profile={profile} streak={streak}/>;
+    if(path==="/app/results/my-results")return <MyResultsPage profile={profile} streak={streak} matches={matches}/>;
+    if(path==="/app/results/my-questions")return <MyQuestionsPage profile={profile} streak={streak} user={user}/>;
+    if(path.match(/^\/app\/results\/question\/[0-9a-f-]+$/i))return <QuestionResultsPage profile={profile} streak={streak} user={user} id={path.split("/")[4]}/>;
+    if(path.match(/^\/app\/results\/responder\/[0-9a-f-]+\/[0-9a-f-]+$/i))return <ResponderPage profile={profile} streak={streak} respondentId={path.split("/")[4]} gameId={path.split("/")[5]}/>;
+    if(path==="/app/profile")return <ProfilePage profile={profile} streak={streak} matches={matches} user={user}/>;
+    if(path==="/app/history")return <HistoryPage profile={profile} streak={streak} matches={matches}/>;
+    if(path==="/app/achievements")return <AchievementsPage profile={profile} streak={streak} matches={matches} user={user}/>;
+    if(path==="/app/awards")return <AwardsPage profile={profile} streak={streak} matches={matches} user={user}/>;
+    if(path==="/app/results/streaks")return <StreaksPage profile={profile} streak={streak} user={user}/>;
+    if(path==="/app/settings")return <SettingsPage profile={profile} streak={streak}/>;
+    if(path.match(/^\/app\/circle\/[0-9a-f-]+$/i))return <CirclePersonPage profile={profile} streak={streak} user={user} personId={path.split("/")[3]}/>;
+    if(path==="/app/circle")return <CirclePage profile={profile} streak={streak} user={user}/>;
+    return <Home profile={profile} streak={streak} matches={matches}/>;
+  }
+  return <main className="sa-public"><header className="sa-public-nav"><a className="sa-brand" href="/"><span className="sa-logo"><span>F</span></span><span>FLAMES</span></a><div><a href="/login">Log in</a><a className="sa-nav-cta" href="/register">Create account</a></div></header><section className="sa-public-hero"><span className="sa-kicker">JUST FOR FUN</span><h1>Two names.<br/><em>One FLAMES result.</em></h1><p>Put two names in. See what happens.</p><a className="sa-primary sa-hero-button" href="/login">Play FLAMES <Icon name="play"/></a><div className="sa-public-letters">{LETTERS.map(l=><span key={l}>{l}</span>)}</div></section><section className="sa-public-simple"><div><span className="sa-kicker">HOW IT WORKS</span><h2>Names in. Result out.</h2><p>Enter two names and let the classic elimination game do the rest.</p></div><div className="sa-public-results">{LETTERS.map(l=><div key={l}><b>{l}</b><strong>{RESULTS[l].name}</strong></div>)}</div></section><footer className="sa-public-footer">FLAMES · Just for fun.</footer></main>;
+
+function PublicQuestion({id}){
+  const [game,setGame]=useState(null),[creator,setCreator]=useState(null),[answer,setAnswer]=useState(""),[done,setDone]=useState(false),[error,setError]=useState("");
+  useEffect(()=>{(async()=>{
+    try{
+      const r=await fetch("https://lbkhadjmkwtrbzwkuhyn.supabase.co/rest/v1/flames_public_questions?id=eq."+encodeURIComponent(id)+"&select=id,title,prompt,options,creator_username,creator_display_name,creator_avatar_id&limit=1",{
+        headers:{apikey:"sb_publishable_NQ17m1yFOZf-6Yg69U3kWQ_yOzFgKkK",Accept:"application/json"}
+      });
+      const rows=await r.json().catch(()=>[]);
+      if(!r.ok||!rows?.length)setError("This question is no longer available.");
+      else {setGame(rows[0]);setCreator({username:rows[0].creator_username,display_name:rows[0].creator_display_name,avatar_id:rows[0].creator_avatar_id});}
+    }catch{setError("We couldn't open this question. Please try again.")}
+  })()},[id]);
+  const submit=async()=>{if(!answer.trim())return;const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim(),respondent_id:(await supabase.auth.getUser()).data?.user?.id||null});if(r.error)setError("Could not send your answer.");else {if((await supabase.auth.getUser()).data?.user)await recordMeaningfulActivity();setDone(true)}};
+  if(error)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><h1>Oops.</h1><p>{error}</p><a className="sa-primary sa-button-link" href="/">Play FLAMES</a></section></main>;
+  if(!game)return <main className="sa-public-question"><section className="sa-question-card"><div className="sa-loading-flame">🔥</div><p>Opening…</p></section></main>;
+  if(done)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><div className="sa-success-check">✓</div><span className="sa-kicker">SENT</span><h1>Nice.</h1><p>Your answer is in.</p><a className="sa-primary sa-button-link" href="/">Play FLAMES <Icon name="arrow"/></a></section></main>;
+  return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><div className="public-question-creator"><Avatar profile={creator} size="md"/><span><small>QUESTION FROM</small><strong>{creator?.display_name}</strong><b>@{creator?.username||"flames"}</b></span></div><span className="sa-kicker">{String(game.kind||"poll").toUpperCase()}</span><h1>{game.title}</h1><p className="sa-question-text">{game.prompt}</p><div className="sa-public-options">{(game.options||[]).map(o=><button className={answer===o?"selected":""} key={o} onClick={()=>setAnswer(o)}>{o}</button>)}</div>{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={!answer.trim()} onClick={submit}>Send answer <Icon name="arrow"/></button></section></main>;
+}
+
+export default function SimpleApp(){
+  const [path,setPath]=useState(()=>location.pathname.replace(/\/$/,"")||"/");
+  const [authReady,setAuthReady]=useState(false),[user,setUser]=useState(null),[profile,setProfile]=useState(null),[matches,setMatches]=useState([]),[streak,setStreak]=useState(0);
+  useEffect(()=>{
+    const onPop=()=>setPath(location.pathname.replace(/\/$/,"")||"/");
+    const onActivity=async()=>{if(user){const a=await getAccount(user);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}};
+    window.addEventListener("flames:activity",onActivity);
+    window.addEventListener("popstate",onPop);
+    (async()=>{const r=await supabase.auth.getUser();const u=r.data?.user||null;setUser(u);if(u){const a=await getAccount(u);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}setAuthReady(true)})();
+    const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{const u=session?.user||null;setUser(u);if(u){const a=await getAccount(u);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}else{setProfile(null);setMatches([]);setStreak(0)}});
+    return()=>{window.removeEventListener("popstate",onPop);window.removeEventListener("flames:activity",onActivity);sub.subscription.unsubscribe()};
+  },[]);
+  useEffect(()=>{if(!authReady)return;const authPages=["/login","/register","/forgot-password","/reset-password"];const returnTo=new URLSearchParams(location.search).get("returnTo");if(user&&path==="/"){history.replaceState({}, "", "/app");setPath("/app")}else if(!user&&path.startsWith("/app")){history.replaceState({}, "", "/login");setPath("/login")}else if(user&&authPages.includes(path)){const target=returnTo&&returnTo.startsWith("/")?returnTo:"/app";history.replaceState({}, "", target);setPath(target)}},[authReady,user,path]);
   if(path==="/login")return <AuthPage mode="login"/>;
   if(path==="/register")return <AuthPage mode="register"/>;
   if(path==="/forgot-password"||path==="/reset-password")return <ResetPage/>;
