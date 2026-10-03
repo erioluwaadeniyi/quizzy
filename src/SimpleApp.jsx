@@ -272,7 +272,11 @@ function ResponderPage({profile,streak,respondentId,gameId}){const [p,setP]=useS
 
 
 async function recordMeaningfulActivity(){
-  try{return await supabase.rpc("flames_record_activity",{})}catch{return {error:{message:"activity failed"}}}
+  try{
+    const r=await supabase.rpc("flames_record_activity",{});
+    if(r?.data?.[0])window.dispatchEvent(new CustomEvent("flames:activity",{detail:r.data[0]}));
+    return r;
+  }catch{return {error:{message:"activity failed"}}}
 }
 async function syncAwards(user,profile,matches){
   if(!user)return;
@@ -352,7 +356,7 @@ function PublicQuestion({id}){
       else {setGame(rows[0]);setCreator({username:rows[0].creator_username,display_name:rows[0].creator_display_name,avatar_id:rows[0].creator_avatar_id});}
     }catch{setError("We couldn't open this question. Please try again.")}
   })()},[id]);
-  const submit=async()=>{if(!answer.trim())return;const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim(),respondent_id:(await supabase.auth.getSession()).data?.session?.user?.id||null});if(r.error)setError("Could not send your answer.");else {if((await supabase.auth.getUser()).data?.user)await recordMeaningfulActivity();setDone(true)}};
+  const submit=async()=>{if(!answer.trim())return;const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim(),respondent_id:(await supabase.auth.getUser()).data?.user?.id||null});if(r.error)setError("Could not send your answer.");else {if((await supabase.auth.getUser()).data?.user)await recordMeaningfulActivity();setDone(true)}};
   if(error)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><h1>Oops.</h1><p>{error}</p><a className="sa-primary sa-button-link" href="/">Play FLAMES</a></section></main>;
   if(!game)return <main className="sa-public-question"><section className="sa-question-card"><div className="sa-loading-flame">🔥</div><p>Opening…</p></section></main>;
   if(done)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><div className="sa-success-check">✓</div><span className="sa-kicker">SENT</span><h1>Nice.</h1><p>Your answer is in.</p><a className="sa-primary sa-button-link" href="/">Play FLAMES <Icon name="arrow"/></a></section></main>;
