@@ -210,15 +210,21 @@ function CreatePage({profile,streak,user}){
   const create=async e=>{
     e.preventDefault();setError("");
     const q=question.trim(),opts=options.map(x=>x.trim()).filter(Boolean);
+    if(!user?.id){setError("Please log in again before creating a question.");return}
     if(q.length<3){setError("Give your question a little more detail.");return}
     if(opts.length<2){setError("Add at least two choices.");return}
     setBusy(true);
     try{
       const title=q.length>45?q.slice(0,45).trim()+"…":q;
-      const r=await supabase.from("flames_games").insert({creator_id:user.id,kind:"poll",title,prompt:q,options:opts,answer_value:null}).select().single();
-      if(r.error){setError(r.error.message||"Could not create the question.");return}
-      if(!r.data?.id){setError("The question was created but no share link was returned. Please try again.");return}
-      setLink(location.origin+"/game/"+r.data.id);
+      const id=crypto.randomUUID();
+      const r=await supabase.from("flames_games").insert({
+        id,creator_id:user.id,kind:"poll",title,prompt:q,options:opts,answer_value:null
+      });
+      if(r.error){
+        setError(r.error.message||"Could not create the question.");
+        return;
+      }
+      setLink(location.origin+"/game/"+id);
     }catch(err){
       setError(err?.message||"We couldn't create the question. Check your connection and try again.");
     }finally{setBusy(false)}
