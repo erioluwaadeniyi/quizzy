@@ -269,7 +269,7 @@ function CreatePage({profile,streak,user}){
         <small>FLAMES QUESTION</small>
         <h2>{previewQuestion}</h2>
         <div className="create-preview-options">{(previewOptions.length?previewOptions:["Your first choice","Your second choice"]).map((o,i)=><div key={i}><span>{i+1}</span>{o}</div>)}</div>
-        <p>Friends can answer from the link. No account needed.</p>
+        <p>Friends can answer from the link. A FLAMES account is required to submit.</p>
       </aside>
     </form>
   </section></div></Shell>;
@@ -326,7 +326,6 @@ const AWARDS={
 };
 function NotificationsBell({user}){
  const [items,setItems]=useState([]),[open,setOpen]=useState(false);
- if(!user)return null;
  useLiveRefresh(4000);
  const load=async()=>{const r=await supabase.from("flames_notifications").select("*").eq("recipient_id",user.id).order("created_at",{ascending:false}).limit(20);setItems(r.data||[])};
  useEffect(()=>{load()},[user.id]);
