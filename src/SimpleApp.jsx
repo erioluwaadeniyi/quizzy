@@ -297,28 +297,8 @@ async function recordMeaningfulActivity(){
     return r;
   }catch{return {error:{message:"activity failed"}}}
 }
-async function syncAwards(user,profile,matches){
-  if(!user)return;
-  const streak=profile?.streak_count||0;
-  const {data:games}=await supabase.from("flames_games").select("id").eq("creator_id",user.id);
-  const {data:responses}=await supabase.from("flames_game_responses").select("id").eq("respondent_id",user.id);
-  const gameCount=games?.length||0, responseCount=responses?.length||0, matchCount=matches?.length||0;
-  const keys=[];
-  if(matchCount>=1)keys.push("first_flame");
-  if(matchCount>=5)keys.push("five_matches");
-  if(matchCount>=25)keys.push("twentyfive_matches");
-  if(matchCount>=100)keys.push("hundred_matches");
-  if(gameCount>=1)keys.push("question_starter");
-  if(gameCount>=5)keys.push("five_questions");
-  if(gameCount>=25)keys.push("twentyfive_questions");
-  if(responseCount>=100)keys.push("answers_100");
-  if(streak>=3)keys.push("streak_3");
-  if(streak>=7)keys.push("streak_7");
-  if(streak>=14)keys.push("streak_14");
-  if(streak>=30)keys.push("streak_30");
-  if(streak>=100)keys.push("streak_100");
-  for(const award_key of keys)await supabase.from("flames_awards").insert({user_id:user.id,award_key});
-}
+async function syncAwards(user){if(!user?.id)return null;return await supabase.rpc("flames_sync_awards",{})}
+
 const AWARDS={
  first_flame:["First Flame","Your first FLAMES match."],five_matches:["Getting Started","Complete 5 matches."],twentyfive_matches:["Regular","Complete 25 matches."],hundred_matches:["FLAMES Addict","Complete 100 matches."],
  question_starter:["Question Starter","Create your first question."],five_questions:["Curious Mind","Create 5 questions."],twentyfive_questions:["Question Machine","Create 25 questions."],answers_100:["People Are Listening","Get 100 answers."],
@@ -336,8 +316,9 @@ function NotificationsBell({user}){
  return <div className="sa-notification-wrap"><button className="sa-notification-button" aria-label="Notifications" onClick={()=>setOpen(v=>!v)}><Icon name="bell" size={18}/>{unread>0&&<b>{unread>9?"9+":unread}</b>}</button>{open&&<div className="sa-notification-panel"><div className="sa-notification-head"><strong>Notifications</strong><small>{unread?unread+" new":"You're all caught up"}</small></div>{items.length?items.slice(0,8).map(n=><div className={"sa-notification "+(!n.read_at?"unread":"")} key={n.id}><div><strong>{n.title}</strong><p>{n.body}</p><small>{timeAgo(n.created_at)}</small></div><button onClick={()=>view(n)}>View <Icon name="arrow" size={13}/></button></div>):<div className="sa-notification-empty"><Icon name="spark"/><span>No important updates yet.</span></div>}</div>}</div>;
 }
 function AwardsPage({profile,streak,matches,user}){
+ const tick=useLiveRefresh(5000);
  const [awards,setAwards]=useState([]);
- useEffect(()=>{(async()=>{await syncAwards(user,profile,matches);const r=await supabase.from("flames_awards").select("*").eq("user_id",user.id).order("unlocked_at",{ascending:false});setAwards(r.data||[])})()},[user.id,profile?.streak_count,matches.length]);
+ useEffect(()=>{(async()=>{await syncAwards(user);const r=await supabase.from("flames_awards").select("*").eq("user_id",user.id).order("unlocked_at",{ascending:false});setAwards(r.data||[])})()},[user.id,profile?.streak_count,matches.length,tick]);
  const unlocked=new Set(awards.map(x=>x.award_key));
  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary awards-page"><button className="results-back" onClick={()=>go("/app/profile")}><Icon name="back"/> Profile</button><span className="sa-kicker">AWARDS</span><h1>Your collection.</h1><p className="sa-secondary-sub">No rewards locked behind a paywall. Just things you earned.</p><div className="award-grid">{Object.entries(AWARDS).map(([key,[title,desc]])=><div className={"award-card "+(unlocked.has(key)?"unlocked":"locked")} key={key}><span className="award-icon">{unlocked.has(key)?"✦":"?"}</span><div><strong>{title}</strong><small>{desc}</small></div>{unlocked.has(key)&&<b>UNLOCKED</b>}</div>)}</div></div></Shell>;
 }
@@ -420,4 +401,4 @@ export default function SimpleApp(){
     return <Home profile={profile} streak={streak} matches={matches}/>;
   }
   return <main className="sa-public"><header className="sa-public-nav"><a className="sa-brand" href="/"><span className="sa-logo"><span>F</span></span><span>FLAMES</span></a><div><a href="/login">Log in</a><a className="sa-nav-cta" href="/register">Create account</a></div></header><section className="sa-public-hero"><span className="sa-kicker">JUST FOR FUN</span><h1>Two names.<br/><em>One FLAMES result.</em></h1><p>Put two names in. See what happens.</p><a className="sa-primary sa-hero-button" href="/login">Play FLAMES <Icon name="play"/></a><div className="sa-public-letters">{LETTERS.map(l=><span key={l}>{l}</span>)}</div></section><section className="sa-public-simple"><div><span className="sa-kicker">HOW IT WORKS</span><h2>Names in. Result out.</h2><p>Enter two names and let the classic elimination game do the rest.</p></div><div className="sa-public-results">{LETTERS.map(l=><div key={l}><b>{l}</b><strong>{RESULTS[l].name}</strong></div>)}</div></section><footer className="sa-public-footer">FLAMES · Just for fun.</footer></main>;
-
+}
