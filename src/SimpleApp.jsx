@@ -368,10 +368,12 @@ export default function SimpleApp(){
   const [authReady,setAuthReady]=useState(false),[user,setUser]=useState(null),[profile,setProfile]=useState(null),[matches,setMatches]=useState([]),[streak,setStreak]=useState(0);
   useEffect(()=>{
     const onPop=()=>setPath(location.pathname.replace(/\/$/,"")||"/");
+    const onActivity=async()=>{if(user){const a=await getAccount(user);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}};
+    window.addEventListener("flames:activity",onActivity);
     window.addEventListener("popstate",onPop);
     (async()=>{const r=await supabase.auth.getUser();const u=r.data?.user||null;setUser(u);if(u){const a=await getAccount(u);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}setAuthReady(true)})();
     const {data:sub}=supabase.auth.onAuthStateChange(async(_,session)=>{const u=session?.user||null;setUser(u);if(u){const a=await getAccount(u);setProfile(a.profile);setMatches(a.matches);setStreak(a.profile?.streak_count||0)}else{setProfile(null);setMatches([]);setStreak(0)}});
-    return()=>{window.removeEventListener("popstate",onPop);sub.subscription.unsubscribe()};
+    return()=>{window.removeEventListener("popstate",onPop);window.removeEventListener("flames:activity",onActivity);sub.subscription.unsubscribe()};
   },[]);
   useEffect(()=>{if(!authReady)return;const authPages=["/login","/register","/forgot-password","/reset-password"];if(user&&path==="/"){history.replaceState({}, "", "/app");setPath("/app")}else if(!user&&path.startsWith("/app")){history.replaceState({}, "", "/login");setPath("/login")}else if(user&&authPages.includes(path)){history.replaceState({}, "", "/app");setPath("/app")}},[authReady,user,path]);
   if(path==="/login")return <AuthPage mode="login"/>;
