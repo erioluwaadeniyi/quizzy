@@ -284,7 +284,7 @@ function CirclePage({profile,streak,user}){
 
 function PublicQuestion({id}){
   const [game,setGame]=useState(null),[answer,setAnswer]=useState(""),[done,setDone]=useState(false),[error,setError]=useState("");
-  useEffect(()=>{(async()=>{const r=await supabase.from("flames_games").select("*").eq("id",id).single();if(r.error)setError("This question is no longer available.");else setGame(r.data)})()},[id]);
+  useEffect(()=>{(async()=>{const r=await supabase.from("flames_games").select("*").eq("id",id).limit(1);if(r.error||!r.data?.length)setError(r.error?.message||"This question is no longer available.");else setGame(r.data[0])})()},[id]);
   const submit=async()=>{if(!answer.trim())return;const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim()});if(r.error)setError("Could not send your answer.");else setDone(true)};
   if(error)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><h1>Oops.</h1><p>{error}</p><a className="sa-primary sa-button-link" href="/">Play FLAMES</a></section></main>;
   if(!game)return <main className="sa-public-question"><section className="sa-question-card"><div className="sa-loading-flame">🔥</div><p>Opening…</p></section></main>;
