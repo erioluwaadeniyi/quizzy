@@ -117,6 +117,7 @@ async function getAccount(user){
 
 function AuthPage({mode}){
   const login=mode==="login";
+  const returnTo=new URLSearchParams(location.search).get("returnTo")||"/app";
   const [name,setName]=useState(""),[username,setUsername]=useState(""),[email,setEmail]=useState(""),[password,setPassword]=useState(""),[busy,setBusy]=useState(false),[error,setError]=useState(""),[available,setAvailable]=useState(null),[done,setDone]=useState(false);
   useEffect(()=>{if(login||username.trim().length<3){setAvailable(null);return}let off=false;const t=setTimeout(async()=>{const {data}=await supabase.from("flames_profiles").select("id").eq("username",username.trim().toLowerCase()).limit(1);if(!off)setAvailable(!data?.length)},300);return()=>{off=true;clearTimeout(t)}},[username,login]);
   const submit=async e=>{
@@ -128,14 +129,14 @@ function AuthPage({mode}){
     try{
       const r=login?await signIn({email,password}):await signUp({email,password,displayName:name.trim(),username:username.trim().toLowerCase()});
       if(r.error){setError(r.error.message||"Something went wrong.");return}
-      if(login){go("/app");return}
+      if(login){go(returnTo);return}
       if(!r.data?.session){setError("Account created, but email confirmation is still enabled.");return}
       setDone(true);
     }catch(err){
       setError(err?.message||"We couldn't connect to FLAMES. Check your connection and try again.");
     }finally{setBusy(false)}
   };
-  return <main className="sa-auth"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-auth-card"><div className="sa-fire">🔥</div><span className="sa-kicker">{login?"WELCOME BACK":"JOIN FLAMES"}</span>{done?<><h1>You're in.</h1><p>Your FLAMES account is ready.</p><button className="sa-primary" onClick={()=>go("/app/play")}>Play FLAMES <Icon name="arrow"/></button></>:<><h1>{login?"Come back and play.":"Make FLAMES yours."}</h1><p>{login?"Your games, your streak, your little FLAMES history.":"A small account keeps your results and gives you your own FLAMES name."}</p>{!login&&<><label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Alex Johnson"/></label><label>FLAMES username<div className="sa-user-input"><b>@</b><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="alexjohnson"/></div>{available===true&&<small className="sa-good">Name is available.</small>}{available===false&&<small className="sa-bad">That name is taken.</small>}</label></>}<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label><label><div className="sa-password-line"><span>Password</span>{login&&<a href="/forgot-password">Forgot?</a>}</div><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label>{error&&<div className="sa-error">{error}</div>}<button type="button" className="sa-primary" disabled={busy} onClick={submit}>{busy?"One moment…":login?"Log in":"Create account"} <Icon name="arrow"/></button><a className="sa-switch" href={login?"/register":"/login"}>{login?"New here? Create an account":"Already have an account? Log in"}</a></>}</section></main>;
+  return <main className="sa-auth"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-auth-card"><div className="sa-fire">🔥</div><span className="sa-kicker">{login?"WELCOME BACK":"JOIN FLAMES"}</span>{done?<><h1>You're in.</h1><p>Your FLAMES account is ready.</p><button className="sa-primary" onClick={()=>go(returnTo)}>Play FLAMES <Icon name="arrow"/></button></>:<><h1>{login?"Come back and play.":"Make FLAMES yours."}</h1><p>{login?"Your games, your streak, your little FLAMES history.":"A small account keeps your results and gives you your own FLAMES name."}</p>{!login&&<><label>Full name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Alex Johnson"/></label><label>FLAMES username<div className="sa-user-input"><b>@</b><input value={username} onChange={e=>setUsername(e.target.value.replace(/[^a-z0-9_]/g,"").slice(0,20))} placeholder="alexjohnson"/></div>{available===true&&<small className="sa-good">Name is available.</small>}{available===false&&<small className="sa-bad">That name is taken.</small>}</label></>}<label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label><label><div className="sa-password-line"><span>Password</span>{login&&<a href="/forgot-password">Forgot?</a>}</div><input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="At least 6 characters"/></label>{error&&<div className="sa-error">{error}</div>}<button type="button" className="sa-primary" disabled={busy} onClick={submit}>{busy?"One moment…":login?"Log in":"Create account"} <Icon name="arrow"/></button><a className="sa-switch" href={login?"/register":"/login"}>{login?"New here? Create an account":"Already have an account? Log in"}</a></>}</section></main>;
 }
 
 function ResetPage(){
@@ -338,11 +339,43 @@ function AchievementsPage({profile,streak,matches,user}){return <Shell profile={
 function SettingsPage({profile,streak}){return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">SETTINGS</span><h1>Keep it simple.</h1><p className="sa-secondary-sub">Your account is ready to play.</p><div className="sa-settings-card"><Avatar profile={profile} size="lg"/><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div></div></div></Shell>}
 
 function CirclePage({profile,streak,user}){
-  const [query,setQuery]=useState(""),[results,setResults]=useState([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
-  const search=async e=>{e.preventDefault();const q=query.trim().toLowerCase();if(q.length<2){setResults([]);return}setBusy(true);const r=await supabase.from("flames_profiles").select("*").ilike("username",q+"%").limit(6);setBusy(false);setResults((r.data||[]).filter(x=>x.id!==user.id))};
-  const add=async p=>{setNotice("");const r=await supabase.from("flames_connections").insert({requester_id:user.id,addressee_id:p.id,status:"pending"}).select().single();setNotice(r.error?"Request could not be sent.":"Request sent.")};
-  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">PRIVATE CIRCLE</span><h1>Keep your people close.</h1><p className="sa-secondary-sub">Find someone by FLAMES username.</p><form className="sa-search" onSubmit={search}><input value={query} onChange={e=>setQuery(e.target.value.replace(/[^a-z0-9_]/gi,"").slice(0,20))} placeholder="@username"/><button className="sa-primary">{busy?"…":"Find"}</button></form>{notice&&<div className="sa-good">{notice}</div>}<div className="sa-list">{results.map(p=><div className="sa-person" key={p.id}><Avatar profile={p}/><div><strong>{p.display_name}</strong><span>@{p.username}</span></div><button onClick={()=>add(p)}>Add</button></div>)}</div></div></Shell>;
+  const [query,setQuery]=useState(""),[results,setResults]=useState([]),[people,setPeople]=useState([]),[busy,setBusy]=useState(false),[notice,setNotice]=useState("");
+  const loadCircle=async()=>{
+    const r=await supabase.from("flames_connections").select("requester_id,addressee_id,status").or("requester_id.eq."+user.id+",addressee_id.eq."+user.id).eq("status","accepted");
+    const ids=(r.data||[]).map(x=>x.requester_id===user.id?x.addressee_id:x.requester_id);
+    if(ids.length){const p=await supabase.from("flames_profiles").select("id,username,display_name,avatar_id,streak_count").in("id",ids);setPeople(p.data||[])}else setPeople([]);
+  };
+  useEffect(()=>{loadCircle()},[user.id]);
+  const search=async e=>{e.preventDefault();const q=query.trim().toLowerCase();if(q.length<2){setResults([]);return}setBusy(true);const r=await supabase.from("flames_profiles").select("id,username,display_name,avatar_id,streak_count").ilike("username",q+"%").limit(6);setBusy(false);setResults((r.data||[]).filter(x=>x.id!==user.id))};
+  const add=async p=>{setNotice("");const r=await supabase.from("flames_connections").insert({requester_id:user.id,addressee_id:p.id,status:"pending"});setNotice(r.error?(r.error.message||"Request could not be sent."):"Request sent.");if(!r.error)setResults([])};
+  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary circle-page"><span className="sa-kicker">Pfunction PublicQuestion({id}){
+  const [game,setGame]=useState(null),[creator,setCreator]=useState(null),[answer,setAnswer]=useState(""),[done,setDone]=useState(false),[error,setError]=useState(""),[authChecked,setAuthChecked]=useState(false),[user,setUser]=useState(null);
+  useEffect(()=>{(async()=>{const r=await supabase.auth.getUser();setUser(r.data?.user||null);setAuthChecked(true)})()},[]);
+  useEffect(()=>{(async()=>{
+    try{
+      const r=await fetch("https://lbkhadjmkwtrbzwkuhyn.supabase.co/rest/v1/flames_public_questions?id=eq."+encodeURIComponent(id)+"&select=id,title,prompt,options,creator_username,creator_display_name,creator_avatar_id&limit=1",{
+        headers:{apikey:"sb_publishable_NQ17m1yFOZf-6Yg69U3kWQ_yOzFgKkK",Accept:"application/json"}
+      });
+      const rows=await r.json().catch(()=>[]);
+      if(!r.ok||!rows?.length)setError("This question is no longer available.");
+      else {setGame(rows[0]);setCreator({username:rows[0].creator_username,display_name:rows[0].creator_display_name,avatar_id:rows[0].creator_avatar_id});}
+    }catch{setError("We couldn't open this question. Please try again.")}
+  })()},[id]);
+  const submit=async()=>{
+    if(!answer.trim())return;
+    if(!user?.id){go("/register?returnTo="+encodeURIComponent("/game/"+id));return}
+    const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim(),respondent_id:user.id});
+    if(r.error)setError("Could not send your answer.");
+    else {await recordMeaningfulActivity();setDone(true)}
+  };
+  if(error)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><h1>Oops.</h1><p>{error}</p><a className="sa-primary sa-button-link" href="/">Play FLAMES</a></section></main>;
+  if(!authChecked)return <main className="sa-public-question"><section className="sa-question-card"><div className="sa-loading-flame">🔥</div><p>Opening…</p></section></main>;
+  if(done)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><div className="sa-success-check">✓</div><span className="sa-kicker">SENT</span><h1>Nice.</h1><p>Your answer is in.</p><a className="sa-primary sa-button-link" href="/">Play FLAMES <Icon name="arrow"/></a></section></main>;
+  return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><div className="public-question-creator"><Avatar profile={creator} size="md"/><span><small>QUESTION FROM</small><strong>{creator?.display_name}</strong><b>@{creator?.username||"flames"}</b></span></div><span className="sa-kicker">{String(game.kind||"poll").toUpperCase()}</span><h1>{game.title}</h1><p className="sa-question-text">{game.prompt}</p><div className="sa-public-options">{(game.options||[]).map(o=><button className={answer===o?"selected":""} key={o} onClick={()=>setAnswer(o)}>{o}</button>)}</div>{!user&&<div className="sa-login-required"><strong>One quick step before you answer.</strong><span>Create your free FLAMES account and we'll bring you straight back here.</span><button type="button" onClick={()=>go("/register?returnTo="+encodeURIComponent("/game/"+id))}>Create account <Icon name="arrow" size={13}/></button><small>Already have an account? <a href={"/login?returnTo="+encodeURIComponent("/game/"+id)}>Log in</a></small></div>}{error&&<div className="sa-error">{error}</div>}<button className="sa-primary" disabled={!answer.trim()} onClick={submit}>Send answer <Icon name="arrow"/></button></section></main>;
 }
+le"><div className="sa-secondary circle-person-page"><button className="results-back" onClick={()=>go("/app/circle")}><Icon name="back"/> Private Circle</button><section className="circle-person-hero"><Avatar profile={person} size="lg"/><span className="sa-kicker">IN YOUR CIRCLE</span><h1>{person.display_name}</h1><p>@{person.username}</p><div className="circle-person-stats"><span><b>🔥 {person.streak_count||0}</b><small>current streak</small></span><span><b>🔥 {person.longest_streak||person.streak_count||0}</b><small>longest streak</small></span><span><b>{questions.length}</b><small>questions</small></span></div></section><section className="circle-detail-section"><div className="circle-section-title"><span>THEIR QUESTIONS</span><small>{questions.length}</small></div>{questions.length?<div className="circle-question-list">{questions.map(q=><button className="circle-question-card" key={q.id} onClick={()=>go("/app/results/question/"+q.id)}><span className="circle-question-mark">?</span><span><strong>{q.title||q.prompt}</strong><small>{q.prompt}</small></span><Icon name="arrow" size={14}/></button>)}</div>:<div className="sa-empty compact"><p>No questions yet.</p></div>}</section><section className="circle-detail-section"><div className="circle-section-title"><span>THEIR ANSWERS TO YOU</span><small>{theirAnswers.length}</small></div>{theirAnswers.length?<div className="circle-answer-list">{theirAnswers.map(a=><div className="circle-answer-card" key={a.id}><span className="circle-answer-kicker">YOUR QUESTION</span><strong>{a.title}</strong><b>{a.answer}</b><small>{timeAgo(a.created_at)}</small></div>)}</div>:<div className="sa-empty compact"><p>They haven't answered one of your questions yet.</p></div>}</section></div></Shell>;
+}
+
 
 function PublicQuestion({id}){
   const [game,setGame]=useState(null),[creator,setCreator]=useState(null),[answer,setAnswer]=useState(""),[done,setDone]=useState(false),[error,setError]=useState("");
@@ -395,6 +428,7 @@ export default function SimpleApp(){
     if(path==="/app/awards")return <AwardsPage profile={profile} streak={streak} matches={matches} user={user}/>;
     if(path==="/app/results/streaks")return <StreaksPage profile={profile} streak={streak} user={user}/>;
     if(path==="/app/settings")return <SettingsPage profile={profile} streak={streak}/>;
+    if(path.match(/^\/app\/circle\/[0-9a-f-]+$/i))return <CirclePersonPage profile={profile} streak={streak} user={user} personId={path.split("/")[3]}/>;
     if(path==="/app/circle")return <CirclePage profile={profile} streak={streak} user={user}/>;
     return <Home profile={profile} streak={streak} matches={matches}/>;
   }
