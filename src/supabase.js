@@ -37,6 +37,7 @@ async function authFetch(path,options={}){
   const session=await refreshIfNeeded();
   const headers={apikey:SUPABASE_KEY,Accept:"application/json",...(options.headers||{})};
   headers.Authorization="Bearer "+(session?.access_token||SUPABASE_KEY);
+  if(options.body!=null && !headers["Content-Type"] && !headers["content-type"]) headers["Content-Type"]="application/json";
   return fetch(SUPABASE_URL+path,{...options,headers});
 }
 function emit(event,session){
