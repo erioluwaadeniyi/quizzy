@@ -115,6 +115,11 @@ function buildRequest(table){
   return api;
 }
 export const supabase={
+  rpc:async(name,args={})=>{
+    const r=await authFetch("/rest/v1/rpc/"+name,{method:"POST",body:JSON.stringify(args)});
+    const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch{}
+    return r.ok?{data,error:null,status:r.status}:{data:null,error:{message:data?.message||data?.hint||"Request failed."},status:r.status};
+  },
   auth:{
     getUser:async()=>({data:{user:await getUser()}}),
     signInWithPassword:({email,password})=>signIn(email,password),

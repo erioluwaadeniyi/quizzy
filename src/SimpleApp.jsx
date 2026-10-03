@@ -78,6 +78,7 @@ function Icon({name,size=18}){
     arrow:<><path d="M5 12h13"/><path d="m13 6 6 6-6 6"/></>,back:<><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></>,
     settings:<><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/><path d="m4.9 4.9 1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/><circle cx="12" cy="12" r="4"/></>,
     results:<><path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M22 19H2"/></>,
+    bell:<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></>,
     trophy:<><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v7a5 5 0 0 1-10 0V4Z"/><path d="M7 6H4v3a4 4 0 0 0 4 4"/><path d="M17 6h3v3a4 4 0 0 1-4 4"/></>
   };
   return <svg {...p}>{x[name]||x.spark}</svg>;
@@ -94,7 +95,7 @@ function Shell({profile,streak,view,children}){
         <button className={view==="create"?"active":""} onClick={()=>go("/app/create")}><Icon name="plus"/>Create</button>
         <button className={view==="results"?"active":""} onClick={()=>go("/app/results")}><Icon name="results"/>Results</button>
       </nav>
-      <div className="sa-nav-right"><span className="sa-streak">🔥 {streak||0}</span><button className="sa-avatar-button" onClick={()=>go("/app/profile")}><Avatar profile={profile} size="sm"/></button></div>
+      <div className="sa-nav-right"><span className="sa-streak">🔥 {streak||0}</span><NotificationsBell user={profile?.id?{id:profile.id}:null}/><button className="sa-avatar-button" onClick={()=>go("/app/profile")}><Avatar profile={profile} size="sm"/></button></div>
     </header>
     {children}
   </main>;
@@ -109,13 +110,7 @@ async function getAccount(user){
     profile=created.data||null;
   }
   const {data:matches}=await supabase.from("flames_matches").select("*").eq("user_id",user.id).order("created_at",{ascending:false}).limit(20);  if(profile){
-    const today=new Date().toISOString().slice(0,10);
-    if(profile.last_active_date!==today){
-      const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
-      const next=profile.last_active_date===yesterday?(profile.streak_count||0)+1:1;
-      const upd=await supabase.from("flames_profiles").update({streak_count:next,last_active_date:today,updated_at:new Date().toISOString()}).eq("id",user.id).select().single();
-      profile=upd.data||profile;
-    }
+    
   }
   return {profile,matches:matches||[]};
 }
@@ -171,7 +166,7 @@ function GamePage({profile,streak,user}){
       const key=flames(a,b),pct=percent(a,b),data=RESULTS[key],message=data.messages[Math.floor(Math.random()*data.messages.length)];
       if(user){
         const r=await supabase.from("flames_matches").insert({user_id:user.id,name_a:a.trim(),name_b:secret?"":b.trim(),result_key:key,percent:pct,message,secret_mode:secret}).select().single();
-        setSaved(!r.error);
+        setSaved(!r.error); if(!r.error){const ar=await recordMeaningfulActivity();if(ar?.data?.[0])setTimeout(()=>syncAwards(user,{...profile,streak_count:ar.data[0].streak_count,longest_streak:ar.data[0].longest_streak},[...[]]),0)}
       }
       setStage(7);await new Promise(r=>setTimeout(r,220));
       setResult({key,pct,message,title:data.title,quote:data.quote});
@@ -227,7 +222,7 @@ function CreatePage({profile,streak,user}){
         setError(r.error.message||"Could not create the question.");
         return;
       }
-      setLink(location.origin+"/game/"+id);
+      setLink(location.origin+"/game/"+id); await recordMeaningfulActivity();
     }catch(err){
       setError(err?.message||"We couldn't create the question. Check your connection and try again.");
     }finally{setBusy(false)}
@@ -275,6 +270,59 @@ function QuestionResultsPage({profile,streak,user,id}){const [game,setGame]=useS
 
 function ResponderPage({profile,streak,respondentId,gameId}){const [p,setP]=useState(null),[answer,setAnswer]=useState(null);useEffect(()=>{(async()=>{const [pr,rr]=await Promise.all([supabase.from("flames_profiles").select("id,username,display_name,avatar_id,streak_count").eq("id",respondentId).single(),supabase.from("flames_game_responses").select("answer,created_at").eq("game_id",gameId).eq("respondent_id",respondentId).order("created_at",{ascending:false}).limit(1).single()]);setP(pr.data||null);setAnswer(rr.data||null)})()},[respondentId,gameId]);return <Shell profile={profile} streak={streak} view="results"><div className="sa-secondary responder-page"><button className="results-back" onClick={()=>go("/app/results/question/"+gameId)}><Icon name="back"/> Question results</button>{p?<section className="responder-profile-card"><Avatar profile={p} size="xl"/><span className="sa-kicker">FLAMES PROFILE</span><h1>{p.display_name}</h1><p>@{p.username||"flames"}</p><div className="responder-answer"><span>ANSWERED</span><strong>{answer?.answer||"—"}</strong><small>{answer?.created_at?timeAgo(answer.created_at):""}</small></div></section>:<div className="sa-empty">Profile not found.</div>}</div></Shell>}
 
+
+async function recordMeaningfulActivity(){
+  try{return await supabase.rpc("flames_record_activity",{})}catch{return {error:{message:"activity failed"}}}
+}
+async function syncAwards(user,profile,matches){
+  if(!user)return;
+  const streak=profile?.streak_count||0;
+  const {data:games}=await supabase.from("flames_games").select("id").eq("creator_id",user.id);
+  const {data:responses}=await supabase.from("flames_game_responses").select("id").eq("respondent_id",user.id);
+  const gameCount=games?.length||0, responseCount=responses?.length||0, matchCount=matches?.length||0;
+  const keys=[];
+  if(matchCount>=1)keys.push("first_flame");
+  if(matchCount>=5)keys.push("five_matches");
+  if(matchCount>=25)keys.push("twentyfive_matches");
+  if(matchCount>=100)keys.push("hundred_matches");
+  if(gameCount>=1)keys.push("question_starter");
+  if(gameCount>=5)keys.push("five_questions");
+  if(gameCount>=25)keys.push("twentyfive_questions");
+  if(responseCount>=100)keys.push("answers_100");
+  if(streak>=3)keys.push("streak_3");
+  if(streak>=7)keys.push("streak_7");
+  if(streak>=14)keys.push("streak_14");
+  if(streak>=30)keys.push("streak_30");
+  if(streak>=100)keys.push("streak_100");
+  for(const award_key of keys)await supabase.from("flames_awards").insert({user_id:user.id,award_key});
+}
+const AWARDS={
+ first_flame:["First Flame","Your first FLAMES match."],five_matches:["Getting Started","Complete 5 matches."],twentyfive_matches:["Regular","Complete 25 matches."],hundred_matches:["FLAMES Addict","Complete 100 matches."],
+ question_starter:["Question Starter","Create your first question."],five_questions:["Curious Mind","Create 5 questions."],twentyfive_questions:["Question Machine","Create 25 questions."],answers_100:["People Are Listening","Get 100 answers."],
+ streak_3:["Getting Warm","Keep a 3-day streak."],streak_7:["On Fire","Keep a 7-day streak."],streak_14:["Unstoppable","Keep a 14-day streak."],streak_30:["FLAMES Veteran","Keep a 30-day streak."],streak_100:["Legend","Keep a 100-day streak."],
+ friends_energy:["Bestie Energy","Get Friends 10 times."],romcom_energy:["Rom-Com Energy","Get Lovers 10 times."],chaos_energy:["Chaos Energy","Collect the chaotic results."]
+};
+function NotificationsBell({user}){
+ const [items,setItems]=useState([]),[open,setOpen]=useState(false);
+ if(!user)return null;
+ const load=async()=>{const r=await supabase.from("flames_notifications").select("*").eq("recipient_id",user.id).order("created_at",{ascending:false}).limit(20);setItems(r.data||[])};
+ useEffect(()=>{load();const t=setInterval(load,30000);return()=>clearInterval(t)},[user.id]);
+ const unread=items.filter(x=>!x.read_at).length;
+ const view=async n=>{await supabase.from("flames_notifications").update({read_at:new Date().toISOString()}).eq("id",n.id);go(n.link_path);setOpen(false);setItems(items.map(x=>x.id===n.id?{...x,read_at:new Date().toISOString()}:x))};
+ return <div className="sa-notification-wrap"><button className="sa-notification-button" aria-label="Notifications" onClick={()=>setOpen(v=>!v)}><Icon name="bell" size={18}/>{unread>0&&<b>{unread>9?"9+":unread}</b>}</button>{open&&<div className="sa-notification-panel"><div className="sa-notification-head"><strong>Notifications</strong><small>{unread?unread+" new":"You're all caught up"}</small></div>{items.length?items.slice(0,8).map(n=><div className={"sa-notification "+(!n.read_at?"unread":"")} key={n.id}><div><strong>{n.title}</strong><p>{n.body}</p><small>{timeAgo(n.created_at)}</small></div><button onClick={()=>view(n)}>View <Icon name="arrow" size={13}/></button></div>):<div className="sa-notification-empty"><Icon name="spark"/><span>No important updates yet.</span></div>}</div>}</div>;
+}
+function AwardsPage({profile,streak,matches,user}){
+ const [awards,setAwards]=useState([]);
+ useEffect(()=>{(async()=>{await syncAwards(user,profile,matches);const r=await supabase.from("flames_awards").select("*").eq("user_id",user.id).order("unlocked_at",{ascending:false});setAwards(r.data||[])})()},[user.id,profile?.streak_count,matches.length]);
+ const unlocked=new Set(awards.map(x=>x.award_key));
+ return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary awards-page"><button className="results-back" onClick={()=>go("/app/profile")}><Icon name="back"/> Profile</button><span className="sa-kicker">AWARDS</span><h1>Your collection.</h1><p className="sa-secondary-sub">No rewards locked behind a paywall. Just things you earned.</p><div className="award-grid">{Object.entries(AWARDS).map(([key,[title,desc]])=><div className={"award-card "+(unlocked.has(key)?"unlocked":"locked")} key={key}><span className="award-icon">{unlocked.has(key)?"✦":"?"}</span><div><strong>{title}</strong><small>{desc}</small></div>{unlocked.has(key)&&<b>UNLOCKED</b>}</div>)}</div></div></Shell>;
+}
+function StreaksPage({profile,streak,user}){
+ const [board,setBoard]=useState([]),[opt,setOpt]=useState(!!profile?.show_on_streak_board);
+ useEffect(()=>{(async()=>{const r=await supabase.from("flames_streak_board").select("id,username,display_name,avatar_id,streak_count,longest_streak").limit(50);setBoard(r.data||[])})()},[opt]);
+ const toggle=async()=>{const next=!opt;setOpt(next);await supabase.from("flames_profiles").update({show_on_streak_board:next}).eq("id",user.id)};
+ return <Shell profile={profile} streak={streak} view="results"><div className="sa-secondary streak-page"><button className="results-back" onClick={()=>go("/app/results")}><Icon name="back"/> Results</button><span className="sa-kicker">STREAKS BOARD</span><h1>Keep the fire alive.</h1><section className="streak-hero"><div className="streak-fire">🔥</div><strong>{streak||0}</strong><span>day streak</span><small>Longest: {profile?.longest_streak||streak||0} days</small></section><div className="streak-toggle"><span><strong>Show me on the board</strong><small>Only your FLAMES username and streak are shown.</small></span><button onClick={toggle} className={opt?"on":""}><i/></button></div><div className="streak-tabs"><span>ALL-TIME</span></div><div className="streak-board">{board.map((p,i)=><div className={"streak-row "+(p.id===user.id?"you":"")} key={p.id}><b>#{i+1}</b><Avatar profile={p} size="sm"/><span><strong>@{p.username||"flames"}</strong><small>{p.id===user.id?"You":p.display_name}</small></span><strong>🔥 {p.streak_count}</strong></div>)}</div></div></Shell>;
+}
 function ProfilePage({profile,streak,matches}){
   const logout=async()=>{await signOut();window.location.replace("/")};
   return <Shell profile={profile} streak={streak} view="profile"><div className="sa-profile"><section className="sa-profile-card"><Avatar profile={profile} size="xl"/><span className="sa-kicker">YOUR FLAMES</span><h1>{profile?.display_name||"FLAMES Friend"}</h1><p>@{profile?.username||"flames"}</p><div className="sa-profile-stats"><div><strong>{matches.length}</strong><span>matches</span></div><div><strong>{streak||0}</strong><span>day streak</span></div></div></section><section className="sa-profile-list"><button onClick={()=>go("/app/history")}><Icon name="clock"/><span>Recent matches</span><Icon name="arrow"/></button><button onClick={()=>go("/app/circle")}><Icon name="users"/><span>Private Circle</span><Icon name="arrow"/></button><button onClick={()=>go("/app/achievements")}><Icon name="spark"/><span>Achievements</span><Icon name="arrow"/></button><button onClick={()=>go("/app/settings")}><Icon name="settings"/><span>Settings</span><Icon name="arrow"/></button><button className="danger" onClick={logout}><Icon name="back"/><span>Log out</span></button></section></div></Shell>;
@@ -282,10 +330,7 @@ function ProfilePage({profile,streak,matches}){
 
 function HistoryPage({profile,streak,matches}){  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">RECENT MATCHES</span><h1>Your latest plays.</h1><div className="sa-list">{matches.length?matches.map(m=><div className="sa-list-item" key={m.id}><div className={"sa-letter-result result-"+String(m.result_key).toLowerCase()}>{m.result_key}</div><div><strong>{m.name_a} × {m.name_b}</strong><span>{RESULTS[m.result_key]?.name} · {m.percent}%</span><small>{timeAgo(m.created_at)}</small></div></div>):<div className="sa-empty">Nothing here yet.</div>}</div></div></Shell>;
 }
-function AchievementsPage({profile,streak,matches}){
-  const goals=[["First Flame",1,matches.length],["Three day streak",3,streak||0],["Five matches",5,matches.length]];
-  return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">ACHIEVEMENTS</span><h1>Small wins.</h1><p className="sa-secondary-sub">A little progress makes the game more fun.</p><div className="sa-achievements">{goals.map(([t,g,p])=><div className="sa-achievement" key={t}><span>✦</span><div><strong>{t}</strong><small>{Math.min(p,g)}/{g}{p>=g?" · Unlocked":""}</small></div><i style={{width:Math.min((p/g)*100,100)+"%"}}/></div>)}</div></div></Shell>;
-}
+function AchievementsPage({profile,streak,matches,user}){return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">ACHIEVEMENTS</span><h1>Earned, not bought.</h1><p className="sa-secondary-sub">Streaks, matches and questions can unlock permanent awards.</p><button className="sa-primary" onClick={()=>go("/app/awards")}>View all awards <Icon name="arrow"/></button></div></Shell>}
 function SettingsPage({profile,streak}){return <Shell profile={profile} streak={streak} view="profile"><div className="sa-secondary"><span className="sa-kicker">SETTINGS</span><h1>Keep it simple.</h1><p className="sa-secondary-sub">Your account is ready to play.</p><div className="sa-settings-card"><Avatar profile={profile} size="lg"/><div><strong>{profile?.display_name||"FLAMES Friend"}</strong><span>@{profile?.username||"flames"}</span></div></div></div></Shell>}
 
 function CirclePage({profile,streak,user}){
@@ -307,7 +352,7 @@ function PublicQuestion({id}){
       else {setGame(rows[0]);setCreator({username:rows[0].creator_username,display_name:rows[0].creator_display_name,avatar_id:rows[0].creator_avatar_id});}
     }catch{setError("We couldn't open this question. Please try again.")}
   })()},[id]);
-  const submit=async()=>{if(!answer.trim())return;const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim(),respondent_id:(await supabase.auth.getSession()).data?.session?.user?.id||null});if(r.error)setError("Could not send your answer.");else setDone(true)};
+  const submit=async()=>{if(!answer.trim())return;const r=await supabase.from("flames_game_responses").insert({game_id:id,answer:answer.trim(),respondent_id:(await supabase.auth.getSession()).data?.session?.user?.id||null});if(r.error)setError("Could not send your answer.");else {if((await supabase.auth.getUser()).data?.user)await recordMeaningfulActivity();setDone(true)}};
   if(error)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><h1>Oops.</h1><p>{error}</p><a className="sa-primary sa-button-link" href="/">Play FLAMES</a></section></main>;
   if(!game)return <main className="sa-public-question"><section className="sa-question-card"><div className="sa-loading-flame">🔥</div><p>Opening…</p></section></main>;
   if(done)return <main className="sa-public-question"><a className="sa-auth-brand" href="/"><span className="sa-logo"><span>F</span></span>FLAMES</a><section className="sa-question-card"><div className="sa-success-check">✓</div><span className="sa-kicker">SENT</span><h1>Nice.</h1><p>Your answer is in.</p><a className="sa-primary sa-button-link" href="/">Play FLAMES <Icon name="arrow"/></a></section></main>;
@@ -340,7 +385,9 @@ export default function SimpleApp(){
     if(path.match(/^\/app\/results\/responder\/[0-9a-f-]+\/[0-9a-f-]+$/i))return <ResponderPage profile={profile} streak={streak} respondentId={path.split("/")[4]} gameId={path.split("/")[5]}/>;
     if(path==="/app/profile")return <ProfilePage profile={profile} streak={streak} matches={matches} user={user}/>;
     if(path==="/app/history")return <HistoryPage profile={profile} streak={streak} matches={matches}/>;
-    if(path==="/app/achievements")return <AchievementsPage profile={profile} streak={streak} matches={matches}/>;
+    if(path==="/app/achievements")return <AchievementsPage profile={profile} streak={streak} matches={matches} user={user}/>;
+    if(path==="/app/awards")return <AwardsPage profile={profile} streak={streak} matches={matches} user={user}/>;
+    if(path==="/app/results/streaks")return <StreaksPage profile={profile} streak={streak} user={user}/>;
     if(path==="/app/settings")return <SettingsPage profile={profile} streak={streak}/>;
     if(path==="/app/circle")return <CirclePage profile={profile} streak={streak} user={user}/>;
     return <Home profile={profile} streak={streak} matches={matches}/>;
